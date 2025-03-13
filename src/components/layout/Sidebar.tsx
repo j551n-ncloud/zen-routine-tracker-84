@@ -4,7 +4,6 @@ import {
   Calendar, 
   CheckCircle, 
   Home, 
-  LayoutDashboard, 
   ListChecks, 
   Settings, 
   Trophy, 
@@ -69,12 +68,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           href="/" 
           label="Home" 
           isActive={path === "/"}
-        />
-        <SidebarLink 
-          icon={LayoutDashboard} 
-          href="/dashboard" 
-          label="Dashboard" 
-          isActive={path === "/dashboard"}
         />
         <SidebarLink 
           icon={CheckCircle} 

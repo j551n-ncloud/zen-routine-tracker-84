@@ -1,14 +1,19 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Battery, Clock, Coffee } from 'lucide-react';
+import { Battery, Clock, Coffee, Plus, Edit } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 const EnergyTracker: React.FC = () => {
   const [energyLevel, setEnergyLevel] = useState(7);
   const [peakHours, setPeakHours] = useState(['9:00 AM - 11:00 AM', '4:00 PM - 6:00 PM']);
   const [breaks, setBreaks] = useState(['11:30 AM', '3:30 PM']);
+  const [newBreak, setNewBreak] = useState('');
+  const [isAddingBreak, setIsAddingBreak] = useState(false);
+  const [editingPeakHour, setEditingPeakHour] = useState<number | null>(null);
+  const [newPeakHour, setNewPeakHour] = useState('');
 
   // Function to determine energy level color
   const getEnergyColor = () => {
@@ -22,6 +27,34 @@ const EnergyTracker: React.FC = () => {
     if (energyLevel <= 3) return "Low";
     if (energyLevel <= 6) return "Moderate";
     return "High";
+  };
+
+  const handleAddBreak = () => {
+    if (isAddingBreak) {
+      if (newBreak.trim()) {
+        setBreaks([...breaks, newBreak]);
+        setNewBreak('');
+        toast.success('Break time added');
+      }
+      setIsAddingBreak(false);
+    } else {
+      setIsAddingBreak(true);
+    }
+  };
+
+  const startEditPeakHour = (index: number) => {
+    setEditingPeakHour(index);
+    setNewPeakHour(peakHours[index]);
+  };
+
+  const savePeakHour = () => {
+    if (editingPeakHour !== null && newPeakHour.trim()) {
+      const updatedPeakHours = [...peakHours];
+      updatedPeakHours[editingPeakHour] = newPeakHour;
+      setPeakHours(updatedPeakHours);
+      setEditingPeakHour(null);
+      toast.success('Peak hours updated');
+    }
   };
 
   return (
@@ -59,26 +92,56 @@ const EnergyTracker: React.FC = () => {
           </div>
         </div>
         
-        {/* Peak Performance Hours */}
+        {/* Peak Performance Hours - with ability to edit */}
         <div className="p-4 border-b">
-          <div className="flex items-center space-x-2 mb-3">
-            <Clock className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-medium">Peak Performance Hours</h3>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <Clock className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-medium">Peak Performance Hours</h3>
+            </div>
+            <div className="text-xs text-muted-foreground hover:text-foreground cursor-help">
+              When you work best
+            </div>
           </div>
           
           <div className="space-y-2">
             {peakHours.map((hour, index) => (
               <div 
                 key={index}
-                className="rounded-md bg-primary/5 px-3 py-2 text-sm"
+                className="rounded-md bg-primary/5 px-3 py-2 text-sm relative group"
               >
-                {hour}
+                {editingPeakHour === index ? (
+                  <div className="flex space-x-2">
+                    <Input 
+                      value={newPeakHour}
+                      onChange={(e) => setNewPeakHour(e.target.value)}
+                      className="h-7 text-xs"
+                      placeholder="Format: 9:00 AM - 11:00 AM"
+                    />
+                    <button 
+                      onClick={savePeakHour}
+                      className="px-2 py-1 bg-primary text-xs rounded text-primary-foreground"
+                    >
+                      Save
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {hour}
+                    <button 
+                      onClick={() => startEditPeakHour(index)}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </button>
+                  </>
+                )}
               </div>
             ))}
           </div>
         </div>
         
-        {/* Planned Breaks */}
+        {/* Planned Breaks - with working Add Break button */}
         <div className="p-4">
           <div className="flex items-center space-x-2 mb-3">
             <Coffee className="h-4 w-4 text-primary" />
@@ -95,11 +158,30 @@ const EnergyTracker: React.FC = () => {
               </div>
             ))}
             
-            <button 
-              className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-muted-foreground transition-colors"
-            >
-              Add Break
-            </button>
+            {isAddingBreak ? (
+              <div className="col-span-2 flex space-x-2">
+                <Input
+                  value={newBreak}
+                  onChange={(e) => setNewBreak(e.target.value)}
+                  placeholder="e.g., 2:30 PM"
+                  className="flex-1"
+                />
+                <button 
+                  onClick={handleAddBreak}
+                  className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+                >
+                  Add
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={handleAddBreak}
+                className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-muted-foreground transition-colors flex items-center justify-center"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add Break
+              </button>
+            )}
           </div>
         </div>
       </CardContent>
