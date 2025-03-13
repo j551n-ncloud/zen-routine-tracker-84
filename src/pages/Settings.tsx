@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,10 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { FileDown, FileUp, RefreshCw, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useTheme } from "@/providers/theme-provider";
 
 const Settings = () => {
   const { toast: uiToast } = useToast();
-  const [darkMode, setDarkMode] = useState(false);
+  const { theme, setTheme } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [weekStartsOnMonday, setWeekStartsOnMonday] = useState(true);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
@@ -137,8 +138,8 @@ const Settings = () => {
                 </div>
                 <Switch
                   id="dark-mode"
-                  checked={darkMode}
-                  onCheckedChange={setDarkMode}
+                  checked={theme === "dark"}
+                  onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
                 />
               </div>
               
