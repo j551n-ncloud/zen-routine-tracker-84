@@ -1,8 +1,19 @@
 
 import { toast } from "sonner";
 
-// Base URL for the SQLite API
-const API_URL = import.meta.env.VITE_DATABASE_URL || 'http://localhost:3000';
+// Base URL for the SQLite API - dynamically detect the right endpoint
+const API_URL = (() => {
+  // Check if we're in a browser environment (not Node.js)
+  if (typeof window !== 'undefined') {
+    // In production Docker environment, the SQLite service is available on the internal network
+    // In development or preview environment, use the relative URL to avoid CORS issues
+    return import.meta.env.VITE_DATABASE_URL || '/api';
+  }
+  // Default fallback
+  return 'http://localhost:3000';
+})();
+
+console.log('Using database API URL:', API_URL);
 
 // Initialize flag
 let isInitialized = false;

@@ -12,6 +12,19 @@ export function useDbInit() {
   useEffect(() => {
     let isMounted = true;
     
+    // Check if mock mode is enabled
+    const isMockMode = localStorage.getItem('zentracker-mock-mode') === 'true';
+    
+    if (isMockMode) {
+      console.log('Mock database mode is enabled, skipping real database initialization');
+      if (isMounted) {
+        setIsInitialized(true);
+        setIsLoading(false);
+        setError(null);
+      }
+      return;
+    }
+    
     const init = async () => {
       try {
         setIsLoading(true);

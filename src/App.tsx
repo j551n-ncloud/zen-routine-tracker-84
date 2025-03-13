@@ -18,13 +18,77 @@ import Settings from "./pages/Settings";
 import DailyRoutine from "./pages/DailyRoutine";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import { useDbInit } from './hooks/use-db-init';
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
-import { Skeleton } from "@/components/ui/skeleton";
+import { Loader2, AlertCircle, RefreshCw, Database, Settings2 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import ErrorFallback from "@/components/error/ErrorFallback";
 
 const queryClient = new QueryClient();
 
+// Mock database mode for preview environment
+const useMockDatabase = () => {
+  const [isMockMode, setIsMockMode] = useState(false);
+  
+  useEffect(() => {
+    const storedMode = localStorage.getItem('zentracker-mock-mode');
+    setIsMockMode(storedMode === 'true');
+  }, []);
+  
+  const toggleMockMode = () => {
+    const newMode = !isMockMode;
+    localStorage.setItem('zentracker-mock-mode', String(newMode));
+    setIsMockMode(newMode);
+    window.location.reload();
+  };
+  
+  return { isMockMode, toggleMockMode };
+};
+
 function App() {
   const { isInitialized, error, isLoading, retryCount, maxRetries } = useDbInit();
+  const { isMockMode, toggleMockMode } = useMockDatabase();
+  
+  // If mock mode is enabled, skip the database loading state
+  if (isMockMode) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+          <AuthProvider>
+            <TooltipProvider>
+              <div className="fixed bottom-4 right-4 z-50 flex items-center space-x-2 bg-yellow-100 dark:bg-yellow-900 p-2 rounded-md shadow-md text-sm">
+                <Database className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                <span className="text-yellow-700 dark:text-yellow-300">Mock Database Mode</span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={toggleMockMode}
+                  className="h-7 px-2 text-xs"
+                >
+                  Disable
+                </Button>
+              </div>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/" element={<PrivateRoute><Index /></PrivateRoute>} />
+                  <Route path="/habits" element={<PrivateRoute><Habits /></PrivateRoute>} />
+                  <Route path="/tasks" element={<PrivateRoute><Tasks /></PrivateRoute>} />
+                  <Route path="/calendar" element={<PrivateRoute><CalendarPage /></PrivateRoute>} />
+                  <Route path="/insights" element={<PrivateRoute><Insights /></PrivateRoute>} />
+                  <Route path="/achievements" element={<PrivateRoute><Achievements /></PrivateRoute>} />
+                  <Route path="/daily-routine" element={<PrivateRoute><DailyRoutine /></PrivateRoute>} />
+                  <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    );
+  }
   
   if (isLoading) {
     return (
@@ -58,24 +122,36 @@ function App() {
           
           <p className="text-muted-foreground mb-4">
             {retryCount >= maxRetries 
-              ? "Maximum retry attempts reached. Please try manually refreshing the page."
-              : "ZenTracker is having trouble initializing the database. Retrying automatically..."}
+              ? "Maximum retry attempts reached. Continue in mock mode?"
+              : "ZenTracker is having trouble connecting to the database. Retrying automatically..."}
           </p>
 
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors inline-flex items-center"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh Page
-          </button>
+          <div className="flex space-x-3 justify-center">
+            <Button 
+              onClick={() => window.location.reload()}
+              variant="outline"
+              className="mt-2 px-4 py-2 rounded transition-colors inline-flex items-center"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry Connection
+            </Button>
+            
+            <Button 
+              onClick={toggleMockMode}
+              variant="default"
+              className="mt-2 px-4 py-2 rounded transition-colors inline-flex items-center"
+            >
+              <Database className="h-4 w-4 mr-2" />
+              Use Mock Database
+            </Button>
+          </div>
           
           <div className="mt-4 text-xs text-muted-foreground">
             <p>If the problem persists, try:</p>
             <ul className="list-disc list-inside mt-1 text-left">
-              <li>Clearing your browser cache</li>
-              <li>Using a different browser</li>
-              <li>Checking your internet connection</li>
+              <li>Running ZenTracker within Docker</li>
+              <li>Checking your database connection settings</li>
+              <li>Enabling mock mode for development</li>
             </ul>
           </div>
         </div>
