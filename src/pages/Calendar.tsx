@@ -1,10 +1,12 @@
 
 import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, ClipboardList } from "lucide-react";
+import { CheckCircle2, ClipboardList, Battery, Coffee } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 
 // Sample task and habit data for the calendar
 const sampleData = {
@@ -17,7 +19,9 @@ const sampleData = {
       { id: 1, name: "Exercise", completed: true },
       { id: 2, name: "Read", completed: true },
       { id: 3, name: "Meditate", completed: false }
-    ]
+    ],
+    energy: 8,
+    breaks: ["11:30 AM", "3:30 PM"]
   },
   "2023-07-16": {
     tasks: [
@@ -26,7 +30,9 @@ const sampleData = {
     habits: [
       { id: 1, name: "Exercise", completed: false },
       { id: 2, name: "Read", completed: true }
-    ]
+    ],
+    energy: 6,
+    breaks: ["1:00 PM"]
   }
 };
 
@@ -34,13 +40,22 @@ const CalendarPage = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState("tasks");
   
+  // Get energy levels and breaks from localStorage or use defaults
+  const [savedEnergyLevels] = useLocalStorage("energy-levels", {});
+  const [savedBreaks] = useLocalStorage("breaks", {});
+  
   // Format date as YYYY-MM-DD to match our sample data keys
   const formattedDate = date ? 
     `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : 
     "";
   
   // Get data for the selected date
-  const selectedDateData = sampleData[formattedDate] || { tasks: [], habits: [] };
+  const selectedDateData = sampleData[formattedDate] || { 
+    tasks: [], 
+    habits: [],
+    energy: savedEnergyLevels[formattedDate] || 0,
+    breaks: savedBreaks[formattedDate] || []
+  };
   
   return (
     <AppLayout>
@@ -63,8 +78,8 @@ const CalendarPage = () => {
             </Card>
           </div>
           
-          <div>
-            <Card className="shadow-subtle h-full">
+          <div className="space-y-6">
+            <Card className="shadow-subtle">
               <CardHeader>
                 <CardTitle className="text-lg">
                   {date ? date.toLocaleDateString('en-US', { 
@@ -144,6 +159,56 @@ const CalendarPage = () => {
                     )}
                   </TabsContent>
                 </Tabs>
+              </CardContent>
+            </Card>
+            
+            {/* Energy and Break Summary */}
+            <Card className="shadow-subtle">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center">
+                  <Battery className="h-4 w-4 mr-2" />
+                  Energy & Breaks
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Energy Level</span>
+                    <span className="text-sm">{selectedDateData.energy}/10</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded overflow-hidden">
+                    <div 
+                      className="h-full bg-primary" 
+                      style={{ width: `${(selectedDateData.energy/10) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div>
+                  <div className="flex items-center mb-2">
+                    <Coffee className="h-4 w-4 mr-2" />
+                    <span className="text-sm font-medium">Break Times</span>
+                  </div>
+                  
+                  {selectedDateData.breaks && selectedDateData.breaks.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {selectedDateData.breaks.map((breakTime, index) => (
+                        <div 
+                          key={index}
+                          className="rounded-md bg-accent/50 px-3 py-2 text-sm text-center"
+                        >
+                          {breakTime}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-2 text-muted-foreground">
+                      <p className="text-sm">No breaks scheduled</p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>

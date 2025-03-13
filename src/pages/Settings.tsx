@@ -1,11 +1,32 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { toast } from "sonner";
 
 const Settings = () => {
+  const [darkMode, setDarkMode] = useLocalStorage("dark-mode", false);
+  const [notifications, setNotifications] = useLocalStorage("notifications", true);
+  const [soundAlerts, setSoundAlerts] = useLocalStorage("sound-alerts", false);
+
+  // Apply dark mode on mount and when it changes
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (darkMode) {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, [darkMode]);
+
+  const handleDarkModeToggle = (checked: boolean) => {
+    setDarkMode(checked);
+    toast.success(`${checked ? "Dark" : "Light"} mode activated`);
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -25,7 +46,11 @@ const Settings = () => {
                   Toggle between light and dark theme
                 </p>
               </div>
-              <Switch id="dark-mode" />
+              <Switch 
+                id="dark-mode" 
+                checked={darkMode}
+                onCheckedChange={handleDarkModeToggle}
+              />
             </div>
             
             <div className="flex items-center justify-between">
@@ -35,7 +60,11 @@ const Settings = () => {
                   Enable notifications for tasks and habits
                 </p>
               </div>
-              <Switch id="notifications" defaultChecked />
+              <Switch 
+                id="notifications" 
+                checked={notifications}
+                onCheckedChange={(checked) => setNotifications(checked)}
+              />
             </div>
             
             <div className="flex items-center justify-between">
@@ -45,7 +74,11 @@ const Settings = () => {
                   Play sound when timer ends
                 </p>
               </div>
-              <Switch id="sound" />
+              <Switch 
+                id="sound" 
+                checked={soundAlerts}
+                onCheckedChange={(checked) => setSoundAlerts(checked)}
+              />
             </div>
           </CardContent>
         </Card>
