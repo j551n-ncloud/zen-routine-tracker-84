@@ -65,12 +65,49 @@ const EnergyTracker: React.FC = () => {
     }
   };
 
-  // Sync with calendar for today's date if on task page
+  const formatDate = (date: Date): string => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+
+  // Sync with calendar data
   useEffect(() => {
-    // Try to get energy level and breaks for today from calendar data
     try {
       const today = formatDate(new Date());
       
+      // Update energy levels in calendar data
+      const energyLevelsData = localStorage.getItem("energy-levels");
+      if (energyLevelsData) {
+        const savedEnergyLevels = JSON.parse(energyLevelsData);
+        savedEnergyLevels[today] = energyLevel;
+        localStorage.setItem("energy-levels", JSON.stringify(savedEnergyLevels));
+      } else {
+        // Initialize if it doesn't exist
+        const newEnergyLevels = { [today]: energyLevel };
+        localStorage.setItem("energy-levels", JSON.stringify(newEnergyLevels));
+      }
+      
+      // Update breaks in calendar data
+      const breaksData = localStorage.getItem("breaks");
+      if (breaksData) {
+        const savedBreaks = JSON.parse(breaksData);
+        savedBreaks[today] = breaks;
+        localStorage.setItem("breaks", JSON.stringify(savedBreaks));
+      } else {
+        // Initialize if it doesn't exist
+        const newBreaks = { [today]: breaks };
+        localStorage.setItem("breaks", JSON.stringify(newBreaks));
+      }
+    } catch (error) {
+      console.error("Error updating calendar data:", error);
+    }
+  }, [energyLevel, breaks]);
+
+  // Sync from calendar when component mounts
+  useEffect(() => {
+    try {
+      const today = formatDate(new Date());
+      
+      // Get energy level from calendar data
       const energyLevelsData = localStorage.getItem("energy-levels");
       if (energyLevelsData) {
         const savedEnergyLevels = JSON.parse(energyLevelsData);
@@ -79,6 +116,7 @@ const EnergyTracker: React.FC = () => {
         }
       }
       
+      // Get breaks from calendar data
       const breaksData = localStorage.getItem("breaks");
       if (breaksData) {
         const savedBreaks = JSON.parse(breaksData);
@@ -90,10 +128,6 @@ const EnergyTracker: React.FC = () => {
       console.error("Error synchronizing with calendar data:", error);
     }
   }, []);
-
-  const formatDate = (date: Date): string => {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  };
 
   return (
     <Card className="shadow-subtle overflow-hidden">
