@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -52,18 +51,15 @@ const CalendarPage = () => {
     savedBreaks
   );
 
-  // Get all dates with data for the timeline
   const getAllDatesWithData = () => {
     const allDates = new Set<string>();
     
-    // Collect all dates from different data sources
     Object.keys(savedTasks).forEach(date => allDates.add(date));
     Object.keys(savedHabits).forEach(date => allDates.add(date));
     Object.keys(savedEnergyLevels).forEach(date => allDates.add(date));
     Object.keys(dailyFocus).forEach(date => allDates.add(date));
     Object.keys(dailyPriorities).forEach(date => allDates.add(date));
     
-    // Convert to array and sort by date (most recent first)
     return Array.from(allDates)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
   };
@@ -73,14 +69,12 @@ const CalendarPage = () => {
   const [currentEnergyLevel, setCurrentEnergyLevel] = useLocalStorage("current-energy-level", 5);
   const [plannedBreaks, setPlannedBreaks] = useLocalStorage("planned-breaks", []);
 
-  // Check if it's a new day and reset values if needed
   useEffect(() => {
     const today = new Date();
     const todayStr = formatDate(today);
     const lastVisitDate = localStorage.getItem("last-visit-date");
     
     if (lastVisitDate !== todayStr) {
-      // It's a new day, reset focus and priorities for today
       setFocusForToday("");
       setPriorities([]);
       setPlannedBreaks([]);
@@ -88,7 +82,6 @@ const CalendarPage = () => {
     }
   }, []);
 
-  // Sync today's data with the calendar data
   useEffect(() => {
     const today = new Date();
     if (date && date.toDateString() === today.toDateString()) {
@@ -111,40 +104,49 @@ const CalendarPage = () => {
   }, [date, currentEnergyLevel, plannedBreaks, focusForToday, priorities]);
 
   useEffect(() => {
-    // Make sure all habits are included in the calendar for the selected date
-    if (date && allHabits.length > 0) {
-      // If we don't have habits for this date yet, create them from the master habits list
-      if (!savedHabits[formattedDate]) {
-        const updatedHabits = { ...savedHabits };
-        updatedHabits[formattedDate] = allHabits.map(habit => ({
+    if (date && allHabits) {
+      const currentHabits = savedHabits[formattedDate] || [];
+      
+      if (currentHabits.length > 0) {
+        const currentHabitIds = new Set(currentHabits.map(h => h.id));
+        const globalHabitIds = new Set(allHabits.map(h => h.id));
+        
+        const hasDeletedHabits = Array.from(currentHabitIds).some(id => !globalHabitIds.has(id));
+        const hasRenamedHabits = currentHabits.some(h => {
+          const globalHabit = allHabits.find(gh => gh.id === h.id);
+          return globalHabit && globalHabit.name !== h.name;
+        });
+        const hasNewHabits = allHabits.some(h => !currentHabitIds.has(h.id));
+        
+        if (hasDeletedHabits || hasRenamedHabits || hasNewHabits) {
+          const updatedCalendarHabits = allHabits.map(habit => {
+            const existingHabit = currentHabits.find(h => h.id === habit.id);
+            return {
+              id: habit.id,
+              name: habit.name,
+              completed: existingHabit ? existingHabit.completed : false
+            };
+          });
+          
+          const updatedSavedHabits = { ...savedHabits };
+          updatedSavedHabits[formattedDate] = updatedCalendarHabits;
+          setSavedHabits(updatedSavedHabits);
+        }
+      } else if (allHabits.length > 0 && !savedHabits[formattedDate]) {
+        const newCalendarHabits = allHabits.map(habit => ({
           id: habit.id,
           name: habit.name,
-          completed: habit.completed
+          completed: false
         }));
-        setSavedHabits(updatedHabits);
-      } else {
-        // Check if all habits from master list are included
-        const currentHabits = savedHabits[formattedDate];
-        const currentHabitIds = new Set(currentHabits.map(h => h.id));
         
-        const habitsToAdd = allHabits.filter(h => !currentHabitIds.has(h.id))
-          .map(h => ({
-            id: h.id,
-            name: h.name,
-            completed: false
-          }));
-        
-        if (habitsToAdd.length > 0) {
-          const updatedHabits = { ...savedHabits };
-          updatedHabits[formattedDate] = [...currentHabits, ...habitsToAdd];
-          setSavedHabits(updatedHabits);
-        }
+        const updatedSavedHabits = { ...savedHabits };
+        updatedSavedHabits[formattedDate] = newCalendarHabits;
+        setSavedHabits(updatedSavedHabits);
       }
     }
   }, [date, allHabits, formattedDate]);
 
   const openEditDialog = () => {
-    // Set the values based on the selected date
     setEnergyLevel(selectedDateData.energy);
     setBreaks(selectedDateData.breaks || []);
     setTasks(selectedDateData.tasks || []);
@@ -171,7 +173,6 @@ const CalendarPage = () => {
     updatedHabits[formattedDate] = habits;
     setSavedHabits(updatedHabits);
     
-    // Update daily focus and priorities
     const updatedFocus = { ...dailyFocus };
     updatedFocus[formattedDate] = dailyFocusInput;
     setDailyFocus(updatedFocus);
@@ -180,7 +181,6 @@ const CalendarPage = () => {
     updatedPriorities[formattedDate] = prioritiesInput;
     setDailyPriorities(updatedPriorities);
 
-    // If the date is today, update the current values too
     const today = new Date();
     if (date && date.toDateString() === today.toDateString()) {
       setCurrentEnergyLevel(energyLevel);
@@ -201,8 +201,9 @@ const CalendarPage = () => {
       );
       setSavedTasks(updatedTasks);
       
-      // Also update the task in the main tasks list
-      toggleTaskCompletion(id);
+      if (completed) {
+        toggleTaskCompletion(id);
+      }
     }
     
     toast.success(`Task marked as ${completed ? 'not completed' : 'completed'}`);
@@ -216,8 +217,28 @@ const CalendarPage = () => {
       );
       setSavedHabits(updatedHabits);
       
-      // Also update the habit in the main habits list
-      toggleHabit(id);
+      const today = new Date();
+      const isToday = new Date(date as Date).setHours(0,0,0,0) === new Date(today).setHours(0,0,0,0);
+      
+      if (isToday) {
+        toggleHabit(id);
+      } else {
+        try {
+          const dailyHabitsData = localStorage.getItem("zen-tracker-daily-habits");
+          if (dailyHabitsData) {
+            const dailyHabits = JSON.parse(dailyHabitsData);
+            
+            if (!dailyHabits[formattedDate]) {
+              dailyHabits[formattedDate] = {};
+            }
+            
+            dailyHabits[formattedDate][id] = !completed;
+            localStorage.setItem("zen-tracker-daily-habits", JSON.stringify(dailyHabits));
+          }
+        } catch (error) {
+          console.error("Error updating daily habit status:", error);
+        }
+      }
     }
     
     toast.success(`Habit marked as ${completed ? 'not completed' : 'completed'}`);

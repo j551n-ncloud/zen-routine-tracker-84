@@ -63,6 +63,8 @@ export function useHabitsStorage() {
     "zen-tracker-daily-habits", 
     {}
   );
+  // Add calendar habits storage
+  const [calendarHabits, setCalendarHabits] = useLocalStorage<Record<string, any[]>>("calendar-habits", {});
 
   const addHabit = (habit: Omit<Habit, "id" | "streak" | "completed">) => {
     const newId = Math.max(...habits.map(h => h.id), 0) + 1;
@@ -76,12 +78,34 @@ export function useHabitsStorage() {
       ...(habit.icon ? { icon: habit.icon } : {})
     };
     
-    setHabits([...habits, newHabit]);
+    const updatedHabits = [...habits, newHabit];
+    setHabits(updatedHabits);
+    
+    // Sync with calendar habits
+    syncNewHabitToCalendar(newHabit);
+    
     return newId;
+  };
+
+  const syncNewHabitToCalendar = (newHabit: Habit) => {
+    // Add the new habit to all existing calendar days
+    const updatedCalendarHabits = { ...calendarHabits };
+    
+    Object.keys(updatedCalendarHabits).forEach(date => {
+      updatedCalendarHabits[date] = [
+        ...updatedCalendarHabits[date],
+        { id: newHabit.id, name: newHabit.name, completed: false }
+      ];
+    });
+    
+    setCalendarHabits(updatedCalendarHabits);
   };
 
   const toggleHabit = (id: number) => {
     // Update the main habits state
+    const habit = habits.find(h => h.id === id);
+    if (!habit) return;
+
     setHabits(habits.map(habit => 
       habit.id === id 
         ? { 
@@ -95,10 +119,6 @@ export function useHabitsStorage() {
     // Also update the daily habit status for today
     const today = new Date();
     const dateKey = format(today, "yyyy-MM-dd");
-    
-    // Get current habit status
-    const habit = habits.find(h => h.id === id);
-    if (!habit) return;
     
     // Create a new object to avoid direct state mutation
     const newDailyHabitStatus = { ...dailyHabitStatus };
@@ -115,33 +135,87 @@ export function useHabitsStorage() {
     setDailyHabitStatus(newDailyHabitStatus);
     
     // Also update calendar-habits if it exists
-    try {
-      const calendarHabitsData = localStorage.getItem("calendar-habits");
-      if (calendarHabitsData) {
-        const calendarHabits = JSON.parse(calendarHabitsData);
-        if (calendarHabits[dateKey]) {
-          const updatedHabits = calendarHabits[dateKey].map((h: any) => 
-            h.id === id ? { ...h, completed: !habit.completed } : h
-          );
-          calendarHabits[dateKey] = updatedHabits;
-          localStorage.setItem("calendar-habits", JSON.stringify(calendarHabits));
+    syncHabitToggleToCalendar(id, !habit.completed, dateKey);
+  };
+
+  const syncHabitToggleToCalendar = (id: number, completed: boolean, dateKey: string) => {
+    const updatedCalendarHabits = { ...calendarHabits };
+    
+    if (updatedCalendarHabits[dateKey]) {
+      const habitIndex = updatedCalendarHabits[dateKey].findIndex(h => h.id === id);
+      
+      if (habitIndex !== -1) {
+        // Update existing habit
+        updatedCalendarHabits[dateKey][habitIndex].completed = completed;
+      } else {
+        // Add habit if it doesn't exist
+        const habit = habits.find(h => h.id === id);
+        if (habit) {
+          updatedCalendarHabits[dateKey].push({
+            id: habit.id,
+            name: habit.name,
+            completed: completed
+          });
         }
       }
-    } catch (error) {
-      console.error("Error updating calendar-habits:", error);
+      
+      setCalendarHabits(updatedCalendarHabits);
     }
   };
 
   const removeHabit = (id: number) => {
     setHabits(habits.filter(habit => habit.id !== id));
+    
+    // Remove habit from daily status
+    const newDailyHabitStatus = { ...dailyHabitStatus };
+    Object.keys(newDailyHabitStatus).forEach(date => {
+      if (newDailyHabitStatus[date][id]) {
+        delete newDailyHabitStatus[date][id];
+      }
+    });
+    setDailyHabitStatus(newDailyHabitStatus);
+    
+    // Remove from calendar-habits
+    syncHabitRemovalToCalendar(id);
+  };
+
+  const syncHabitRemovalToCalendar = (id: number) => {
+    const updatedCalendarHabits = { ...calendarHabits };
+    
+    Object.keys(updatedCalendarHabits).forEach(date => {
+      updatedCalendarHabits[date] = updatedCalendarHabits[date].filter(h => h.id !== id);
+    });
+    
+    setCalendarHabits(updatedCalendarHabits);
   };
 
   const updateHabit = (id: number, updates: Partial<Omit<Habit, "id">>) => {
-    setHabits(habits.map(habit => 
+    const updatedHabits = habits.map(habit => 
       habit.id === id 
         ? { ...habit, ...updates } 
         : habit
-    ));
+    );
+    
+    setHabits(updatedHabits);
+    
+    // Sync to calendar habits
+    if (updates.name) {
+      syncHabitUpdateToCalendar(id, updates);
+    }
+  };
+
+  const syncHabitUpdateToCalendar = (id: number, updates: Partial<Omit<Habit, "id">>) => {
+    const updatedCalendarHabits = { ...calendarHabits };
+    
+    Object.keys(updatedCalendarHabits).forEach(date => {
+      updatedCalendarHabits[date] = updatedCalendarHabits[date].map(h => 
+        h.id === id 
+          ? { ...h, name: updates.name || h.name } 
+          : h
+      );
+    });
+    
+    setCalendarHabits(updatedCalendarHabits);
   };
 
   return {

@@ -144,6 +144,24 @@ export const getSelectedDateData = (
       // Only use these habits if we don't already have habits for this date
       if (habitsForDate.length > 0 && !savedHabits[formattedDate]) {
         data.habits = habitsForDate;
+      } else if (habitsForDate.length > 0 && savedHabits[formattedDate]) {
+        // Update names for existing habits in case they were edited
+        data.habits = savedHabits[formattedDate].map(savedHabit => {
+          const updatedHabit = habitsForDate.find((h: any) => h.id === savedHabit.id);
+          return updatedHabit ? { ...savedHabit, name: updatedHabit.name } : savedHabit;
+        });
+        
+        // Add any new habits that don't exist in savedHabits
+        const savedHabitIds = new Set(data.habits.map(h => h.id));
+        const newHabits = habitsForDate.filter((h: any) => !savedHabitIds.has(h.id));
+        
+        if (newHabits.length > 0) {
+          data.habits = [...data.habits, ...newHabits];
+        }
+        
+        // Remove habits that no longer exist in the global habits store
+        const globalHabitIds = new Set(allHabits.map((h: any) => h.id));
+        data.habits = data.habits.filter(h => globalHabitIds.has(h.id));
       }
     }
   } catch (error) {

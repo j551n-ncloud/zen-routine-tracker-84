@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { CheckCircle, X, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -29,7 +29,59 @@ const HabitsView: React.FC<HabitsViewProps> = ({ habits, date, onToggleHabit }) 
     "zen-tracker-daily-habits", 
     {}
   );
-  const { toggleHabit } = useHabitsStorage();
+  const { toggleHabit, habits: allHabits } = useHabitsStorage();
+  const [calendarHabits, setCalendarHabits] = useLocalStorage<Record<string, any[]>>("calendar-habits", {});
+
+  // Update local habit state when global habits change (for edits/deletes)
+  useEffect(() => {
+    if (date && habits.length > 0) {
+      const dateKey = format(date, "yyyy-MM-dd");
+      
+      // Find any habits that were deleted
+      const currentHabitIds = new Set(habits.map(h => h.id));
+      const globalHabitIds = new Set(allHabits.map(h => h.id));
+      
+      // Check if any current habits no longer exist in global habit store
+      const hasDeletedHabits = Array.from(currentHabitIds).some(id => !globalHabitIds.has(id));
+      
+      // Update names for edited habits
+      const hasNameChanges = habits.some(h => {
+        const globalHabit = allHabits.find(gh => gh.id === h.id);
+        return globalHabit && globalHabit.name !== h.name;
+      });
+      
+      if (hasDeletedHabits || hasNameChanges) {
+        // Sync with global habits
+        const updatedHabits = allHabits.map(h => ({
+          id: h.id,
+          name: h.name,
+          completed: habits.find(ch => ch.id === h.id)?.completed || false
+        }));
+        
+        // Update calendar habits for this date
+        const updatedCalendarHabits = { ...calendarHabits };
+        updatedCalendarHabits[dateKey] = updatedHabits;
+        setCalendarHabits(updatedCalendarHabits);
+        
+        // Also update daily habit status
+        const newDailyHabitStatus = { ...dailyHabitStatus };
+        
+        // Initialize the date entry if it doesn't exist
+        if (!newDailyHabitStatus[dateKey]) {
+          newDailyHabitStatus[dateKey] = {};
+        }
+        
+        // Clean up deleted habits
+        Object.keys(newDailyHabitStatus[dateKey]).forEach(habitId => {
+          if (!globalHabitIds.has(Number(habitId))) {
+            delete newDailyHabitStatus[dateKey][Number(habitId)];
+          }
+        });
+        
+        setDailyHabitStatus(newDailyHabitStatus);
+      }
+    }
+  }, [allHabits, date, habits]);
 
   const handleToggleHabit = (id: number, completed: boolean) => {
     if (onToggleHabit) {
@@ -51,6 +103,18 @@ const HabitsView: React.FC<HabitsViewProps> = ({ habits, date, onToggleHabit }) 
       
       // Update state
       setDailyHabitStatus(newDailyHabitStatus);
+      
+      // Update calendar habits
+      const updatedCalendarHabits = { ...calendarHabits };
+      if (!updatedCalendarHabits[dateKey]) {
+        updatedCalendarHabits[dateKey] = habits;
+      }
+      
+      updatedCalendarHabits[dateKey] = updatedCalendarHabits[dateKey].map(h => 
+        h.id === id ? { ...h, completed: !completed } : h
+      );
+      
+      setCalendarHabits(updatedCalendarHabits);
       
       // Check if it's today and update the global habit state as well
       const today = new Date();
