@@ -1,3 +1,4 @@
+
 import initSqlJs, { SqlJsStatic, Database } from 'sql.js';
 import { toast } from "sonner";
 
@@ -7,14 +8,10 @@ let db: Database | null = null;
 let isInitializing = false;
 let initPromise: Promise<void> | null = null;
 
-// List of CDN URLs to try for the SQL.js WASM file
-const WASM_CDNS = [
-  'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.wasm',
-  'https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/sql-wasm.wasm',
-  'https://unpkg.com/sql.js@1.8.0/dist/sql-wasm.wasm'
-];
+// URL for SQL.js wasm file - using relative path
+const SQL_WASM_PATH = '/node_modules/sql.js/dist/sql-wasm.wasm';
 
-// Function to initialize the database with retry mechanism
+// Function to initialize the database 
 export const initDatabase = async (): Promise<void> => {
   if (isInitializing) {
     // If already initializing, return the existing promise
@@ -25,31 +22,14 @@ export const initDatabase = async (): Promise<void> => {
   
   initPromise = new Promise(async (resolve, reject) => {
     try {
-      // Try each CDN URL until one works
-      let sqlInitialized = false;
-      let lastError = null;
-      
       console.log("Initializing SQL.js");
       
-      for (const wasmUrl of WASM_CDNS) {
-        try {
-          // Initialize SQL.js with specific WASM URL
-          SQL = await initSqlJs({
-            locateFile: () => wasmUrl
-          });
-          
-          console.log("SQL.js initialized successfully using:", wasmUrl);
-          sqlInitialized = true;
-          break; // Break the loop if initialization succeeds
-        } catch (error) {
-          console.warn(`Failed to initialize SQL.js with WASM from ${wasmUrl}:`, error);
-          lastError = error;
-        }
-      }
+      // Initialize SQL.js with local path
+      SQL = await initSqlJs({
+        locateFile: () => SQL_WASM_PATH
+      });
       
-      if (!sqlInitialized) {
-        throw lastError || new Error("Failed to initialize SQL.js with any of the provided WASM URLs");
-      }
+      console.log("SQL.js initialized successfully");
       
       // Load existing database from localStorage or create a new one
       try {

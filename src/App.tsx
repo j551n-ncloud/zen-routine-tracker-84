@@ -31,7 +31,7 @@ function App() {
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="text-center max-w-md p-6 bg-card border rounded-lg shadow-md">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-lg font-medium mb-2">Initializing database...</p>
+          <p className="text-lg font-medium mb-2">Initializing SQLite database...</p>
           <p className="text-muted-foreground mb-4">
             {attempts > 0 ? `Attempt ${attempts}/${maxAttempts}` : "Setting up your local database"}
           </p>
@@ -59,7 +59,7 @@ function App() {
             <p className="text-sm font-mono whitespace-pre-wrap">{error.message}</p>
           </div>
           <p className="text-muted-foreground mb-4">
-            There was a problem setting up the local database. This could be due to network issues or browser compatibility.
+            There was a problem setting up the SQLite database. This could be due to a compatibility issue with your browser.
           </p>
           <Button 
             className="w-full" 

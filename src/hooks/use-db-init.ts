@@ -7,7 +7,7 @@ export function useDbInit() {
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [attempts, setAttempts] = useState(0);
-  const MAX_ATTEMPTS = 5;
+  const MAX_ATTEMPTS = 3;
 
   const initDB = useCallback(async () => {
     if (attempts >= MAX_ATTEMPTS) {
@@ -27,8 +27,8 @@ export function useDbInit() {
       console.error('Failed to initialize database:', err);
       // Increment attempts counter
       setAttempts(prev => prev + 1);
-      // Use exponential backoff for retries (1s, 2s, 4s, 8s, etc.)
-      const delay = Math.min(1000 * Math.pow(2, attempts), 10000);
+      // Use exponential backoff for retries (1s, 2s, 4s)
+      const delay = Math.min(1000 * Math.pow(2, attempts), 5000);
       console.log(`Retrying database initialization in ${delay}ms (attempt ${attempts + 1}/${MAX_ATTEMPTS})`);
       
       setTimeout(() => {
