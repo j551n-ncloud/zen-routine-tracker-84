@@ -1,19 +1,10 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-
-// Sample habit completion data
-const habitCompletionData = {
-  "2023-06-10": 3,  // completed 3 habits
-  "2023-06-11": 2,
-  "2023-06-12": 4,
-  "2023-06-13": 1,
-  "2023-06-14": 5,
-  "2023-06-15": 0,  // no habits completed
-  "2023-06-16": 2,
-};
+import { useHabitsStorage } from "@/hooks/use-habits-storage";
+import { format } from "date-fns";
 
 interface MonthlyViewProps {
   className?: string;
@@ -27,11 +18,51 @@ interface CalendarDayProps {
 
 const MonthlyView: React.FC<MonthlyViewProps> = ({ className }) => {
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const { habits } = useHabitsStorage();
+  const [habitCompletionData, setHabitCompletionData] = useState<Record<string, number>>({});
+  
+  // Load real habit completion data from localStorage
+  useEffect(() => {
+    try {
+      const dailyHabitsData = localStorage.getItem("zen-tracker-daily-habits");
+      const calendarHabitsData = localStorage.getItem("calendar-habits");
+      
+      const completionData: Record<string, number> = {};
+      
+      // Process daily habits data
+      if (dailyHabitsData) {
+        const dailyHabits = JSON.parse(dailyHabitsData);
+        
+        Object.entries(dailyHabits).forEach(([date, habitsObj]: [string, any]) => {
+          const completedCount = Object.values(habitsObj).filter(value => !!value).length;
+          if (completedCount > 0) {
+            completionData[date] = (completionData[date] || 0) + completedCount;
+          }
+        });
+      }
+      
+      // Process calendar habits data
+      if (calendarHabitsData) {
+        const calendarHabits = JSON.parse(calendarHabitsData);
+        
+        Object.entries(calendarHabits).forEach(([date, habitsArray]: [string, any]) => {
+          const completedCount = habitsArray.filter((h: any) => h.completed).length;
+          if (completedCount > 0) {
+            completionData[date] = (completionData[date] || 0) + completedCount;
+          }
+        });
+      }
+      
+      setHabitCompletionData(completionData);
+    } catch (error) {
+      console.error("Error loading habit completion data:", error);
+    }
+  }, []);
   
   // Function to customize day rendering
   const customDayRender = (day: Date, isSelected: boolean) => {
     // Format date to match the keys in habitCompletionData
-    const dateKey = day.toISOString().split('T')[0];
+    const dateKey = format(day, 'yyyy-MM-dd');
     
     // Get completion count for this day (if any)
     const completionCount = habitCompletionData[dateKey] || 0;

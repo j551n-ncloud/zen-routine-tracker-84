@@ -60,8 +60,21 @@ const CalendarPage = () => {
     Object.keys(dailyFocus).forEach(date => allDates.add(date));
     Object.keys(dailyPriorities).forEach(date => allDates.add(date));
     
-    return Array.from(allDates)
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    return filterToOneWeek(Array.from(allDates)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime()));
+  };
+
+  const filterToOneWeek = (dates: string[]): string[] => {
+    if (dates.length === 0) return [];
+    
+    const today = new Date();
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(today.getDate() - 7);
+    
+    return dates.filter(dateStr => {
+      const date = new Date(dateStr);
+      return date >= oneWeekAgo && date <= today;
+    });
   };
 
   const [focusForToday, setFocusForToday] = useLocalStorage("focus-for-today", "");
@@ -75,10 +88,23 @@ const CalendarPage = () => {
     const lastVisitDate = localStorage.getItem("last-visit-date");
     
     if (lastVisitDate !== todayStr) {
-      setFocusForToday("");
-      setPriorities([]);
-      setPlannedBreaks([]);
       localStorage.setItem("last-visit-date", todayStr);
+    }
+  }, []);
+
+  useEffect(() => {
+    const today = new Date();
+    const todayStr = formatDate(today);
+    
+    if ((focusForToday && !dailyFocus[todayStr]) || 
+        (priorities.length > 0 && !dailyPriorities[todayStr])) {
+      const updatedFocus = { ...dailyFocus };
+      updatedFocus[todayStr] = focusForToday;
+      setDailyFocus(updatedFocus);
+      
+      const updatedPriorities = { ...dailyPriorities };
+      updatedPriorities[todayStr] = priorities;
+      setDailyPriorities(updatedPriorities);
     }
   }, []);
 
@@ -93,15 +119,32 @@ const CalendarPage = () => {
       updatedBreaks[formattedDate] = plannedBreaks;
       setSavedBreaks(updatedBreaks);
       
-      const updatedFocus = { ...dailyFocus };
-      updatedFocus[formattedDate] = focusForToday;
-      setDailyFocus(updatedFocus);
+      if (focusForToday) {
+        const updatedFocus = { ...dailyFocus };
+        updatedFocus[formattedDate] = focusForToday;
+        setDailyFocus(updatedFocus);
+      }
       
-      const updatedPriorities = { ...dailyPriorities };
-      updatedPriorities[formattedDate] = priorities;
-      setDailyPriorities(updatedPriorities);
+      if (priorities.length > 0) {
+        const updatedPriorities = { ...dailyPriorities };
+        updatedPriorities[formattedDate] = priorities;
+        setDailyPriorities(updatedPriorities);
+      }
     }
   }, [date, currentEnergyLevel, plannedBreaks, focusForToday, priorities]);
+
+  useEffect(() => {
+    const today = new Date();
+    const todayStr = formatDate(today);
+    
+    if (dailyFocus[todayStr] && dailyFocus[todayStr] !== focusForToday) {
+      setFocusForToday(dailyFocus[todayStr]);
+    }
+    
+    if (dailyPriorities[todayStr] && dailyPriorities[todayStr].length > 0) {
+      setPriorities(dailyPriorities[todayStr]);
+    }
+  }, []);
 
   useEffect(() => {
     if (date && allHabits) {

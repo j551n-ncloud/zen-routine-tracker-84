@@ -45,7 +45,7 @@ const Timeline: React.FC<TimelineProps> = ({
   if (dates.length === 0) {
     return (
       <div className="text-center py-6 text-muted-foreground">
-        <p>No historical data available yet.</p>
+        <p>No historical data available from the past week.</p>
       </div>
     );
   }
