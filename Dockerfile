@@ -35,12 +35,16 @@ RUN cp -v public/sql-wasm.wasm dist/ 2>/dev/null || echo "sql-wasm.wasm not copi
 # Set proper WASM MIME type for nginx
 RUN echo 'application/wasm wasm' > /app/dist/mime.types
 
-# Create start script
-RUN echo '#!/bin/sh\nnginx -g "daemon off;" &\ncd dist && NODE_ENV=production npx serve -s . -l 8080' > /app/start.sh
-RUN chmod +x /app/start.sh
+# Create start script and ensure it exists with proper formatting
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'nginx -g "daemon off;" &' >> /app/start.sh && \
+    echo 'cd /app/dist && NODE_ENV=production npx serve -s . -l 8080' >> /app/start.sh && \
+    chmod +x /app/start.sh && \
+    cat /app/start.sh && \
+    ls -la /app/start.sh
 
 # Expose the port
 EXPOSE 8080
 
 # Start nginx and the application
-CMD ["/app/start.sh"]
+CMD ["/bin/sh", "/app/start.sh"]
