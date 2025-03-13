@@ -19,7 +19,7 @@ if (!fs.existsSync(DATA_DIR)) {
 // Middleware
 app.use(cors({
   origin: '*', // Allow requests from any origin for development
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -61,6 +61,12 @@ const handleDataPost = (req, res) => {
   try {
     const { key } = req.params;
     const { value } = req.body;
+    
+    if (value === undefined) {
+      console.error('No data provided in request body');
+      return res.status(400).json({ error: 'No data provided' });
+    }
+    
     const filePath = path.join(DATA_DIR, `${key}.json`);
     
     console.log(`POST data for key: ${key}`);
@@ -81,6 +87,14 @@ app.post('/data/:key', handleDataPost);
 // For backward compatibility or if nginx doesn't strip the prefix
 app.get('/api/data/:key', handleDataGet);
 app.post('/api/data/:key', handleDataPost);
+
+// Add explicit handling for OPTIONS requests
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
 
 // Fallback for all other routes with useful error message
 app.use('*', (req, res) => {

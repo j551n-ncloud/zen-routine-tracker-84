@@ -1,11 +1,13 @@
-
 import { useState, useEffect } from "react";
 
 // Base URL for API - adjusted for all access scenarios
 const API_BASE_URL = (() => {
   // For production environments
   if (process.env.NODE_ENV === 'production') {
-    return `${window.location.origin}/api`;
+    // Use port 3001 for API calls
+    const origin = window.location.origin;
+    const apiOrigin = origin.replace(/:89$/, ':3001');
+    return apiOrigin;
   }
   
   // For local development
@@ -13,11 +15,13 @@ const API_BASE_URL = (() => {
   const hostname = window.location.hostname;
   if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
     // When accessing from another device on the network
-    return `${window.location.origin}/api`;
+    const origin = window.location.origin;
+    const apiOrigin = origin.replace(/:89$/, ':3001');
+    return apiOrigin;
   }
   
   // Default for localhost
-  return 'http://localhost:3001/api';
+  return 'http://localhost:3001';
 })();
 
 export function useLocalStorage<T>(key: string, initialValue: T) {
@@ -42,6 +46,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     // Sync with server when the component mounts
     const syncFromServer = async () => {
       try {
+        console.log(`Syncing from server: ${API_BASE_URL}/data/${key}`);
         // Try to get from server
         const response = await fetch(`${API_BASE_URL}/data/${key}`);
         
@@ -92,6 +97,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
         
         // Send to server
+        console.log(`Saving to server: ${API_BASE_URL}/data/${key}`);
         fetch(`${API_BASE_URL}/data/${key}`, {
           method: 'POST',
           headers: {

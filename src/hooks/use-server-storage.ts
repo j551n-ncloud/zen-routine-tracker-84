@@ -5,7 +5,10 @@ import { useState, useEffect } from "react";
 const API_BASE_URL = (() => {
   // For production environments
   if (process.env.NODE_ENV === 'production') {
-    return `${window.location.origin}/api`;
+    // Use port 3001 for API calls
+    const origin = window.location.origin;
+    const apiOrigin = origin.replace(/:89$/, ':3001');
+    return apiOrigin;
   }
   
   // For local development
@@ -13,11 +16,13 @@ const API_BASE_URL = (() => {
   const hostname = window.location.hostname;
   if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
     // When accessing from another device on the network
-    return `${window.location.origin}/api`;
+    const origin = window.location.origin;
+    const apiOrigin = origin.replace(/:89$/, ':3001');
+    return apiOrigin;
   }
   
   // Default for localhost
-  return 'http://localhost:3001/api';
+  return 'http://localhost:3001';
 })();
 
 export function useServerStorage<T>(key: string, initialValue: T) {
@@ -31,6 +36,7 @@ export function useServerStorage<T>(key: string, initialValue: T) {
     const fetchData = async () => {
       try {
         setIsLoading(true);
+        console.log(`Fetching data from: ${API_BASE_URL}/data/${key}`);
         
         // Fetch from server
         const response = await fetch(`${API_BASE_URL}/data/${key}`);
@@ -73,6 +79,8 @@ export function useServerStorage<T>(key: string, initialValue: T) {
       
       // Save state
       setStoredValue(valueToStore);
+      
+      console.log(`Saving data to: ${API_BASE_URL}/data/${key}`);
       
       // Save to server
       const response = await fetch(`${API_BASE_URL}/data/${key}`, {
