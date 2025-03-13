@@ -26,9 +26,9 @@ export const getApiBaseUrl = (): string => {
 // Helper function to make data requests
 export const fetchData = async <T>(key: string): Promise<T | null> => {
   const apiBaseUrl = getApiBaseUrl();
-  console.log(`Fetching data from: ${apiBaseUrl}/data/${key}`);
+  console.log(`Fetching data from: ${apiBaseUrl}/${key}`);
   
-  const response = await fetch(`${apiBaseUrl}/data/${key}`);
+  const response = await fetch(`${apiBaseUrl}/${key}`);
   
   if (!response.ok) {
     throw new Error(`Server responded with ${response.status}`);
@@ -45,9 +45,9 @@ export const fetchData = async <T>(key: string): Promise<T | null> => {
 // Helper function to save data
 export const saveData = async <T>(key: string, value: T): Promise<void> => {
   const apiBaseUrl = getApiBaseUrl();
-  console.log(`Saving data to: ${apiBaseUrl}/data/${key}`);
+  console.log(`Saving data to: ${apiBaseUrl}/${key}`);
   
-  const response = await fetch(`${apiBaseUrl}/data/${key}`, {
+  const response = await fetch(`${apiBaseUrl}/${key}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

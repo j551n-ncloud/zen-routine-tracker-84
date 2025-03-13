@@ -25,9 +25,9 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     const syncFromServer = async () => {
       try {
         const apiBaseUrl = getApiBaseUrl();
-        console.log(`Syncing from server: ${apiBaseUrl}/data/${key}`);
+        console.log(`Syncing from server: ${apiBaseUrl}/${key}`);
         // Try to get from server
-        const response = await fetch(`${apiBaseUrl}/data/${key}`);
+        const response = await fetch(`${apiBaseUrl}/${key}`);
         
         if (!response.ok) {
           throw new Error(`Server responded with ${response.status}`);
@@ -77,8 +77,8 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
         
         // Send to server
         const apiBaseUrl = getApiBaseUrl();
-        console.log(`Saving to server: ${apiBaseUrl}/data/${key}`);
-        fetch(`${apiBaseUrl}/data/${key}`, {
+        console.log(`Saving to server: ${apiBaseUrl}/${key}`);
+        fetch(`${apiBaseUrl}/${key}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

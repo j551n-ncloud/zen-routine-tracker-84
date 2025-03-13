@@ -14,10 +14,10 @@ export function useServerStorage<T>(key: string, initialValue: T) {
       try {
         setIsLoading(true);
         const apiBaseUrl = getApiBaseUrl();
-        console.log(`Fetching data from: ${apiBaseUrl}/data/${key}`);
+        console.log(`Fetching data from: ${apiBaseUrl}/${key}`);
         
         // Fetch from server
-        const response = await fetch(`${apiBaseUrl}/data/${key}`);
+        const response = await fetch(`${apiBaseUrl}/${key}`);
         
         if (!response.ok) {
           throw new Error(`Server responded with ${response.status}`);
@@ -59,10 +59,10 @@ export function useServerStorage<T>(key: string, initialValue: T) {
       setStoredValue(valueToStore);
       
       const apiBaseUrl = getApiBaseUrl();
-      console.log(`Saving data to: ${apiBaseUrl}/data/${key}`);
+      console.log(`Saving data to: ${apiBaseUrl}/${key}`);
       
       // Save to server
-      const response = await fetch(`${apiBaseUrl}/data/${key}`, {
+      const response = await fetch(`${apiBaseUrl}/${key}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
