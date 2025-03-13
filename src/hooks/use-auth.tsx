@@ -1,6 +1,6 @@
 
 import { useState, useEffect, createContext, useContext } from 'react';
-import { getData, saveData, executeQuery } from '../services/db-service';
+import { getData, saveData, executeQuery, isMockMode } from '../services/db-service';
 import { toast } from 'sonner';
 import { RowDataPacket } from 'mysql2';
 
@@ -57,7 +57,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Login function
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      // Validate credentials
+      // Mock mode login
+      if (isMockMode()) {
+        console.log("Mock mode login for:", username);
+        
+        // In mock mode, accept any credentials, but recognize "admin" specifically
+        const isAdmin = username.toLowerCase() === 'admin';
+        
+        const authenticatedUser = {
+          username: username,
+          isAdmin: isAdmin
+        };
+        
+        setUser(authenticatedUser);
+        await saveData("auth-user", authenticatedUser);
+        
+        toast.success(`Welcome back, ${authenticatedUser.username}!`);
+        return true;
+      }
+      
+      // Real database login
       const users = await executeQuery<UserRow[]>(
         "SELECT username, is_admin FROM users WHERE username = ? AND password = ?",
         [username, password]

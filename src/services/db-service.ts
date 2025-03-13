@@ -1,24 +1,60 @@
-import mysql from 'mysql2/promise';
+
+import mysql, { Pool } from 'mysql2/promise';
 import config from './api-config';
 import { toast } from 'sonner';
 import { RowDataPacket, OkPacket, ResultSetHeader } from 'mysql2';
 
-// Create a connection pool
-const pool = mysql.createPool({
-  host: config.db.host,
-  port: config.db.port,
-  user: config.db.user,
-  password: config.db.password,
-  database: config.db.database,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+// Define a global variable to hold the connection pool
+let pool: Pool | null = null;
+
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
+
+// Initialize mock mode (will be true in browser environments)
+let mockMode = isBrowser;
+
+// Console log the environment for debugging
+console.log(`Running in ${isBrowser ? 'browser' : 'server'} environment, mock mode: ${mockMode}`);
+
+// Create a connection pool if not in mock mode
+function getPool() {
+  if (mockMode) {
+    console.log('Using mock database mode');
+    return null;
+  }
+  
+  if (!pool) {
+    console.log('Creating new database connection pool');
+    pool = mysql.createPool({
+      host: config.db.host,
+      port: config.db.port,
+      user: config.db.user,
+      password: config.db.password,
+      database: config.db.database,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0
+    });
+  }
+  
+  return pool;
+}
 
 // Initialize the database
 export async function initDatabase() {
   try {
+    // If we're in mock mode, just pretend everything is fine
+    if (mockMode) {
+      console.log('Mock database mode activated - skipping real database initialization');
+      return true;
+    }
+    
     // Test the connection
+    const pool = getPool();
+    if (!pool) {
+      throw new Error('Failed to create database pool');
+    }
+    
     const connection = await pool.getConnection();
     console.log('Successfully connected to MariaDB');
     
@@ -31,8 +67,23 @@ export async function initDatabase() {
     return true;
   } catch (error) {
     console.error('Failed to initialize database:', error);
-    throw error;
+    console.log('Falling back to mock mode');
+    mockMode = true;
+    return false;
   }
+}
+
+// Set mock mode explicitly
+export function setMockMode(enabled: boolean) {
+  mockMode = enabled;
+  localStorage.setItem('zentracker-mock-mode', enabled ? 'true' : 'false');
+  console.log(`Mock mode ${enabled ? 'enabled' : 'disabled'}`);
+  return mockMode;
+}
+
+// Check if mock mode is enabled
+export function isMockMode() {
+  return mockMode;
 }
 
 // Helper to initialize tables
@@ -79,6 +130,16 @@ async function initializeTables(connection) {
 // Execute a query with parameters
 export async function executeQuery<T extends RowDataPacket[]>(sql: string, params: any[] = []): Promise<T> {
   try {
+    if (mockMode) {
+      console.log('Mock executeQuery:', sql, params);
+      return [] as unknown as T;
+    }
+    
+    const pool = getPool();
+    if (!pool) {
+      throw new Error('Database pool not initialized');
+    }
+    
     const [results] = await pool.query<T>(sql, params);
     return results;
   } catch (error) {
@@ -87,10 +148,35 @@ export async function executeQuery<T extends RowDataPacket[]>(sql: string, param
   }
 }
 
+// Interface for key-value data
+interface KeyValueRow extends RowDataPacket {
+  value_data: string;
+}
+
 // Get data from the key_value_store
 export async function getData(key: string) {
   try {
-    const [rows] = await pool.query<RowDataPacket[]>(
+    // Check if mock mode is enabled
+    if (mockMode) {
+      console.log(`[Mock] Getting data for key: ${key}`);
+      // In mock mode, try to get from localStorage
+      const data = localStorage.getItem(`zentracker-${key}`);
+      if (data) {
+        try {
+          return JSON.parse(data);
+        } catch (e) {
+          return data;
+        }
+      }
+      return null;
+    }
+    
+    const pool = getPool();
+    if (!pool) {
+      throw new Error('Database pool not initialized');
+    }
+    
+    const [rows] = await pool.query<KeyValueRow[]>(
       'SELECT value_data FROM key_value_store WHERE key_name = ?',
       [key]
     );
@@ -102,10 +188,8 @@ export async function getData(key: string) {
   } catch (error) {
     console.error(`Error getting data for key ${key}:`, error);
     
-    // Check if mock mode is enabled
-    const isMockMode = localStorage.getItem('zentracker-mock-mode') === 'true';
-    if (isMockMode) {
-      // In mock mode, try to get from localStorage
+    // Fall back to localStorage if database fails
+    try {
       const data = localStorage.getItem(`zentracker-${key}`);
       if (data) {
         try {
@@ -114,15 +198,29 @@ export async function getData(key: string) {
           return data;
         }
       }
+    } catch (e) {
+      console.error('LocalStorage fallback failed:', e);
     }
     
-    throw error;
+    return null;
   }
 }
 
 // Save data to the key_value_store
 export async function saveData(key: string, value: any) {
   try {
+    // For mock mode, use localStorage
+    if (mockMode) {
+      console.log(`[Mock] Saving data for key: ${key}`);
+      localStorage.setItem(`zentracker-${key}`, JSON.stringify(value));
+      return true;
+    }
+    
+    const pool = getPool();
+    if (!pool) {
+      throw new Error('Database pool not initialized');
+    }
+    
     // Always store as JSON
     const jsonValue = JSON.stringify(value);
     
@@ -136,16 +234,12 @@ export async function saveData(key: string, value: any) {
   } catch (error) {
     console.error(`Error saving data for key ${key}:`, error);
     
-    // Check if mock mode is enabled
-    const isMockMode = localStorage.getItem('zentracker-mock-mode') === 'true';
-    if (isMockMode) {
-      // In mock mode, fallback to localStorage
-      try {
-        localStorage.setItem(`zentracker-${key}`, JSON.stringify(value));
-        return true;
-      } catch (e) {
-        console.error('LocalStorage fallback failed:', e);
-      }
+    // Fall back to localStorage if database fails
+    try {
+      localStorage.setItem(`zentracker-${key}`, JSON.stringify(value));
+      return true;
+    } catch (e) {
+      console.error('LocalStorage fallback failed:', e);
     }
     
     throw error;
@@ -155,17 +249,29 @@ export async function saveData(key: string, value: any) {
 // Delete data from the key_value_store
 export async function deleteData(key: string) {
   try {
+    // For mock mode, use localStorage
+    if (mockMode) {
+      console.log(`[Mock] Deleting data for key: ${key}`);
+      localStorage.removeItem(`zentracker-${key}`);
+      return true;
+    }
+    
+    const pool = getPool();
+    if (!pool) {
+      throw new Error('Database pool not initialized');
+    }
+    
     await pool.query('DELETE FROM key_value_store WHERE key_name = ?', [key]);
     return true;
   } catch (error) {
     console.error(`Error deleting data for key ${key}:`, error);
     
-    // Check if mock mode is enabled
-    const isMockMode = localStorage.getItem('zentracker-mock-mode') === 'true';
-    if (isMockMode) {
-      // In mock mode, remove from localStorage
+    // Fall back to localStorage if database fails
+    try {
       localStorage.removeItem(`zentracker-${key}`);
       return true;
+    } catch (e) {
+      console.error('LocalStorage fallback failed:', e);
     }
     
     throw error;
@@ -175,8 +281,14 @@ export async function deleteData(key: string) {
 // Clean up database connections
 export async function closeDatabase() {
   try {
+    if (mockMode || !pool) {
+      console.log('No active database connections to close');
+      return true;
+    }
+    
     await pool.end();
     console.log('Database connections closed');
+    pool = null;
     return true;
   } catch (error) {
     console.error('Error closing database connections:', error);
