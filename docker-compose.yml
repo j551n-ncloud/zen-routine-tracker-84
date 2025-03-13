@@ -19,6 +19,7 @@ services:
     environment:
       - NODE_ENV=production
       - VITE_BASE_URL=/
+      - VITE_SQLITE_API_URL=http://sqlite:3000/api
     restart: unless-stopped
     networks:
       - zentracker_network
@@ -37,6 +38,9 @@ services:
       dockerfile: Dockerfile.sqlite
     volumes:
       - sqlite_data:/db
+      - ./sqlite-api:/app
+    ports:
+      - "3000:3000"
     networks:
       - zentracker_network
     restart: unless-stopped

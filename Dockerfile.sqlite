@@ -1,12 +1,25 @@
 
-# Start with a lightweight base image
-FROM alpine:latest
- 
+# Start with Node.js base image
+FROM node:18-alpine
+
 # Install SQLite
 RUN apk update && apk add sqlite
- 
-# Set the default working directory
-WORKDIR /db
- 
-# Set the default command to open SQLite
-CMD ["sqlite3"]
+
+# Create app directory
+WORKDIR /app
+
+# Copy API files
+COPY sqlite-api/. .
+
+# Install dependencies
+RUN npm init -y && \
+    npm install express cors body-parser sqlite3
+
+# Ensure the database directory exists
+RUN mkdir -p /db
+
+# Expose the port
+EXPOSE 3000
+
+# Start the API server
+CMD ["node", "index.js"]

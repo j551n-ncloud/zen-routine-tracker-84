@@ -1,17 +1,19 @@
 
 import { toast } from "sonner";
-import initSqlJs from 'sql.js';
+import axios from "axios";
 
 // Initialize flag
 let isInitialized = false;
 let isInitializing = false;
 let initPromise: Promise<void> | null = null;
-let db: any = null;
 
 // Performance timer
 let initStartTime = 0;
 
-// Function to initialize the database
+// Base URL for SQLite container API
+const SQLITE_API_URL = 'http://sqlite:3000/api';
+
+// Function to initialize the database connection
 export const initDatabase = async (): Promise<void> => {
   if (isInitialized) {
     return Promise.resolve();
@@ -25,43 +27,33 @@ export const initDatabase = async (): Promise<void> => {
   isInitializing = true;
   initStartTime = performance.now();
   
-  // Preload the WASM file at startup to improve performance
-  const preloadLink = document.createElement('link');
-  preloadLink.rel = 'preload';
-  preloadLink.href = '/sql-wasm.wasm';
-  preloadLink.as = 'fetch';
-  preloadLink.type = 'application/wasm';
-  preloadLink.crossOrigin = 'anonymous';
-  document.head.appendChild(preloadLink);
-  
   initPromise = new Promise(async (resolve, reject) => {
     try {
-      console.log('Initializing SQL.js database');
+      console.log('Initializing SQLite database connection');
       
-      // Initialize SQL.js
-      const SQL = await initSqlJs({
-        // Specify location of wasm file
-        locateFile: file => `/${file}`
-      });
+      // Test connection to SQLite container
+      const response = await axios.get(`${SQLITE_API_URL}/status`);
       
-      // Create a new database
-      db = new SQL.Database();
-      
-      // Create tables
-      await createTables();
-      
-      isInitialized = true;
-      isInitializing = false;
-      
-      const initTime = Math.round(performance.now() - initStartTime);
-      console.log(`Database initialized successfully in ${initTime}ms`);
-      resolve();
+      if (response.status === 200) {
+        isInitialized = true;
+        isInitializing = false;
+        
+        const initTime = Math.round(performance.now() - initStartTime);
+        console.log(`Database connection initialized successfully in ${initTime}ms`);
+        
+        // Ensure tables exist
+        await createTables();
+        
+        resolve();
+      } else {
+        throw new Error(`Failed to connect to SQLite container: ${response.statusText}`);
+      }
     } catch (error) {
-      console.error("Failed to initialize database:", error);
+      console.error("Failed to initialize database connection:", error);
       isInitializing = false;
       reject(error);
       
-      toast.error("Failed to initialize database. Some features may not work properly.");
+      toast.error("Failed to connect to database. Some features may not work properly.");
     }
   });
   
@@ -73,84 +65,84 @@ const createTables = async () => {
   // Initialize table creation performance metrics
   const tableStartTime = performance.now();
   
-  // Table for generic key-value pairs
-  await executeWrite(`
-    CREATE TABLE IF NOT EXISTS key_value_store (
+  const tables = [
+    // Table for generic key-value pairs
+    `CREATE TABLE IF NOT EXISTS key_value_store (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
-    );
-  `);
-  
-  // Table for habits
-  await executeWrite(`
-    CREATE TABLE IF NOT EXISTS habits (
+    );`,
+    
+    // Table for habits
+    `CREATE TABLE IF NOT EXISTS habits (
       id INTEGER PRIMARY KEY,
       name TEXT NOT NULL,
       streak INTEGER DEFAULT 0,
       completed BOOLEAN DEFAULT 0,
       category TEXT,
       icon TEXT
-    );
-  `);
-  
-  // Table for daily habit status
-  await executeWrite(`
-    CREATE TABLE IF NOT EXISTS daily_habits (
+    );`,
+    
+    // Table for daily habit status
+    `CREATE TABLE IF NOT EXISTS daily_habits (
       date TEXT,
       habit_id INTEGER,
       completed BOOLEAN DEFAULT 0,
       PRIMARY KEY (date, habit_id)
-    );
-  `);
-  
-  // Table for tasks
-  await executeWrite(`
-    CREATE TABLE IF NOT EXISTS tasks (
+    );`,
+    
+    // Table for tasks
+    `CREATE TABLE IF NOT EXISTS tasks (
       id INTEGER PRIMARY KEY,
       title TEXT NOT NULL,
       priority TEXT CHECK(priority IN ('high', 'medium', 'low')),
       completed BOOLEAN DEFAULT 0,
       start_date TEXT,
       due_date TEXT NOT NULL
-    );
-  `);
-  
-  // Table for calendar data
-  await executeWrite(`
-    CREATE TABLE IF NOT EXISTS calendar_data (
+    );`,
+    
+    // Table for calendar data
+    `CREATE TABLE IF NOT EXISTS calendar_data (
       date TEXT PRIMARY KEY,
       data TEXT NOT NULL
-    );
-  `);
-  
-  // Table for users (if it doesn't exist)
-  await executeWrite(`
-    CREATE TABLE IF NOT EXISTS users (
+    );`,
+    
+    // Table for users
+    `CREATE TABLE IF NOT EXISTS users (
       username TEXT PRIMARY KEY,
       password TEXT NOT NULL,
       is_admin BOOLEAN DEFAULT 0
-    );
-  `);
+    );`
+  ];
   
-  // Check if any users exist
-  const users = await executeQuery<{ count: number }>(
-    "SELECT COUNT(*) as count FROM users"
-  );
-  
-  // If no users exist, create a default admin user
-  if (users.length === 0 || users[0].count === 0) {
-    await executeWrite(
-      "INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)",
-      ["admin", "admin", 1]
+  try {
+    // Execute each table creation query
+    for (const query of tables) {
+      await executeWrite(query);
+    }
+    
+    // Check if any users exist
+    const users = await executeQuery<{ count: number }>(
+      "SELECT COUNT(*) as count FROM users"
     );
-    console.log("Created default admin user");
+    
+    // If no users exist, create a default admin user
+    if (users.length === 0 || users[0].count === 0) {
+      await executeWrite(
+        "INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)",
+        ["admin", "admin", 1]
+      );
+      console.log("Created default admin user");
+    }
+    
+    const tableTime = Math.round(performance.now() - tableStartTime);
+    console.log(`Database tables created or verified in ${tableTime}ms`);
+  } catch (error) {
+    console.error("Error creating tables:", error);
+    throw error;
   }
-  
-  const tableTime = Math.round(performance.now() - tableStartTime);
-  console.log(`Database tables created or verified in ${tableTime}ms`);
 };
 
-// Create a more efficient query executor with caching
+// Create a query cache
 const queryCache = new Map<string, any[]>();
 
 // Function to execute a query and return the results
@@ -162,40 +154,34 @@ export const executeQuery = async <T>(
   await ensureDatabaseInitialized();
   
   try {
-    // Replace ? with actual values (simple implementation)
-    let finalQuery = query;
-    if (params.length > 0) {
-      params.forEach((param) => {
-        finalQuery = finalQuery.replace('?', typeof param === 'string' ? `'${param}'` : String(param));
-      });
-    }
+    // Create a unique cache key if using cache
+    const cacheKey = useCache ? `${query}_${JSON.stringify(params)}` : '';
     
     // Check cache for read operations
-    if (useCache && finalQuery.trim().toLowerCase().startsWith('select')) {
-      const cacheKey = finalQuery;
+    if (useCache && query.trim().toLowerCase().startsWith('select')) {
       if (queryCache.has(cacheKey)) {
         return queryCache.get(cacheKey) as T[];
       }
     }
     
     const startTime = performance.now();
-    const stmt = db.prepare(finalQuery);
-    const results: T[] = [];
     
-    while (stmt.step()) {
-      results.push(stmt.getAsObject());
-    }
+    // Send query to SQLite container
+    const response = await axios.post(`${SQLITE_API_URL}/query`, {
+      query,
+      params
+    });
     
-    stmt.free();
+    const results = response.data.results as T[];
     
     // Add to cache for read operations
-    if (useCache && finalQuery.trim().toLowerCase().startsWith('select')) {
-      queryCache.set(finalQuery, results);
+    if (useCache && query.trim().toLowerCase().startsWith('select')) {
+      queryCache.set(cacheKey, results);
     }
     
     const queryTime = Math.round(performance.now() - startTime);
-    if (queryTime > 50) {
-      console.warn(`Slow query (${queryTime}ms): ${finalQuery}`);
+    if (queryTime > 200) {
+      console.warn(`Slow query (${queryTime}ms): ${query}`);
     }
     
     return results;
@@ -213,23 +199,20 @@ export const executeWrite = async (
   await ensureDatabaseInitialized();
   
   try {
-    // Replace ? with actual values (simple implementation)
-    let finalQuery = query;
-    if (params.length > 0) {
-      params.forEach((param) => {
-        finalQuery = finalQuery.replace('?', typeof param === 'string' ? `'${param}'` : String(param));
-      });
-    }
-    
     const startTime = performance.now();
-    db.run(finalQuery);
+    
+    // Send write operation to SQLite container
+    await axios.post(`${SQLITE_API_URL}/execute`, {
+      query,
+      params
+    });
     
     // Clear cache on write operations as data may have changed
     queryCache.clear();
     
     const writeTime = Math.round(performance.now() - startTime);
-    if (writeTime > 50) {
-      console.warn(`Slow write operation (${writeTime}ms): ${finalQuery}`);
+    if (writeTime > 200) {
+      console.warn(`Slow write operation (${writeTime}ms): ${query}`);
     }
   } catch (error) {
     console.error("Write operation error:", error, "Query:", query, "Params:", params);
@@ -241,65 +224,6 @@ export const executeWrite = async (
 const ensureDatabaseInitialized = async (): Promise<void> => {
   if (!isInitialized) {
     await initDatabase();
-  }
-};
-
-// Function to save the database to localStorage
-export const saveDatabaseToStorage = (): void => {
-  if (!db) return;
-  
-  try {
-    const startTime = performance.now();
-    const data = db.export();
-    const buffer = new Uint8Array(data);
-    const blob = new Blob([buffer]);
-    
-    // Convert to base64
-    const reader = new FileReader();
-    reader.onload = function() {
-      if (typeof reader.result === 'string') {
-        localStorage.setItem('zentracker-database', reader.result);
-        const saveTime = Math.round(performance.now() - startTime);
-        console.log(`Database saved to localStorage in ${saveTime}ms`);
-      }
-    };
-    reader.readAsDataURL(blob);
-  } catch (error) {
-    console.error('Failed to save database to localStorage:', error);
-  }
-};
-
-// Function to load the database from localStorage with improved performance
-export const loadDatabaseFromStorage = async (): Promise<boolean> => {
-  try {
-    const startTime = performance.now();
-    const data = localStorage.getItem('zentracker-database');
-    if (!data) return false;
-    
-    // Convert from base64
-    const binary = atob(data.split(',')[1]);
-    const array = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      array[i] = binary.charCodeAt(i);
-    }
-    
-    // Initialize SQL.js if needed
-    if (!db) {
-      const SQL = await initSqlJs({
-        locateFile: file => `/${file}`
-      });
-      db = new SQL.Database(array);
-      isInitialized = true;
-      
-      const loadTime = Math.round(performance.now() - startTime);
-      console.log(`Database loaded from localStorage in ${loadTime}ms`);
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.error('Failed to load database from localStorage:', error);
-    return false;
   }
 };
 
@@ -347,11 +271,11 @@ export const saveData = async <T>(key: string, value: T): Promise<void> => {
         [key, valueJson]
       );
     }
-    
-    // Save database to localStorage after write operations
-    saveDatabaseToStorage();
   } catch (error) {
     console.error(`Error saving data for key '${key}':`, error);
     throw error;
   }
 };
+
+// Functions for database export/import are removed as they're not applicable
+// with the container approach (container will handle persistence)
