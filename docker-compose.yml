@@ -5,7 +5,7 @@ services:
   app:
     build: .
     ports:
-      - "8080:8080"  # Changed from 89:8080 to more standard 8080:8080
+      - "8080:8080"
     volumes:
       - ./src:/app/src
       - ./public:/app/public
@@ -15,16 +15,25 @@ services:
       - ./tsconfig.node.json:/app/tsconfig.node.json
       - ./tailwind.config.ts:/app/tailwind.config.ts
       - ./postcss.config.js:/app/postcss.config.js
-      - node_modules:/app/node_modules
+      # Don't mount node_modules from host to container
+      - sql_wasm_volume:/app/public/wasm
     environment:
       - NODE_ENV=production
       - VITE_BASE_URL=/
+      # Add MIME type for WASM
+      - VITE_SERVER_MIME_TYPES=wasm:application/wasm
     restart: unless-stopped
     networks:
       - zentracker_network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 networks:
   zentracker_network:
 
 volumes:
-  node_modules:
+  sql_wasm_volume:

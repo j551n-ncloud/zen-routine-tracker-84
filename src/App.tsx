@@ -18,43 +18,66 @@ import Settings from "./pages/Settings";
 import DailyRoutine from "./pages/DailyRoutine";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import { useDbInit } from './hooks/use-db-init';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Skeleton } from "@/components/ui/skeleton";
 
 const queryClient = new QueryClient();
 
 function App() {
-  const { isInitialized, error, isLoading } = useDbInit();
+  const { isInitialized, error, isLoading, retryCount, maxRetries } = useDbInit();
   
-  if (isLoading || !isInitialized) {
+  if (isLoading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="text-center max-w-md p-6 border rounded-lg shadow-sm">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-xl font-medium mb-2">Initializing ZenTracker</p>
-          <p className="text-muted-foreground">This may take a moment...</p>
+          <p className="text-muted-foreground mb-4">This may take a moment...</p>
+          <div className="w-full bg-secondary rounded-full h-2.5 mb-2">
+            <div className="bg-primary h-2.5 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+          </div>
+          {retryCount > 0 && (
+            <p className="text-xs text-muted-foreground mt-4">
+              Retry attempt {retryCount}/{maxRetries}...
+            </p>
+          )}
         </div>
       </div>
     );
   }
   
-  if (error) {
+  if (!isInitialized && error) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="bg-red-100 text-red-800 p-4 rounded-md mb-4">
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="text-center max-w-md p-6 border rounded-lg shadow-sm">
+          <div className="bg-destructive/10 text-destructive p-4 rounded-md mb-4">
             <AlertCircle className="h-6 w-6 mx-auto mb-2" />
             <p className="font-semibold">Database Initialization Error</p>
             <p className="text-sm mt-2">{error.message}</p>
           </div>
-          <p className="text-muted-foreground">
-            Please try refreshing the page. If the problem persists, check your browser's localStorage settings or try a different browser.
+          
+          <p className="text-muted-foreground mb-4">
+            {retryCount >= maxRetries 
+              ? "Maximum retry attempts reached. Please try manually refreshing the page."
+              : "ZenTracker is having trouble initializing the database. Retrying automatically..."}
           </p>
+
           <button 
             onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            className="mt-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors inline-flex items-center"
           >
+            <RefreshCw className="h-4 w-4 mr-2" />
             Refresh Page
           </button>
+          
+          <div className="mt-4 text-xs text-muted-foreground">
+            <p>If the problem persists, try:</p>
+            <ul className="list-disc list-inside mt-1 text-left">
+              <li>Clearing your browser cache</li>
+              <li>Using a different browser</li>
+              <li>Checking your internet connection</li>
+            </ul>
+          </div>
         </div>
       </div>
     );
