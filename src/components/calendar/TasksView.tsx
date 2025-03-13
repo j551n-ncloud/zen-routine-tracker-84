@@ -1,4 +1,3 @@
-
 import React from "react";
 import { CheckCircle, X, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,31 +27,17 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks }) => {
               key={task.id}
               className="p-3 rounded-md bg-accent/50 flex items-center justify-between"
             >
-              <span className="text-sm">{task.title}</span>
-              <div className="flex items-center space-x-2">
-                {task.completed ? (
-                  <span className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded-full flex items-center">
+              <div 
+                className="flex items-center space-x-2 cursor-pointer flex-1"
+                onClick={() => handleToggleTask(task.id, task.completed)}
+              >
+                <span className={`text-sm ${task.completed ? "line-through text-muted-foreground" : ""}`}>{task.title}</span>
+                {task.completed && (
+                  <span className="text-xs px-2 py-1 bg-green-100/50 text-green-600 rounded-full flex items-center">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Done
                   </span>
-                ) : (
-                  <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-600 rounded-full flex items-center">
-                    <X className="h-3 w-3 mr-1" />
-                    Pending
-                  </span>
                 )}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleToggleTask(task.id, task.completed)}
-                  className="h-6 px-2 ml-2"
-                >
-                  {task.completed ? 
-                    <X className="h-3 w-3 mr-1" /> : 
-                    <CheckSquare className="h-3 w-3 mr-1" />
-                  }
-                  {task.completed ? 'Undo' : 'Complete'}
-                </Button>
               </div>
             </div>
           ))}

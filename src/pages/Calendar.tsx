@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -9,7 +8,6 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-// Import our new components
 import TasksView from "@/components/calendar/TasksView";
 import HabitsView from "@/components/calendar/HabitsView";
 import EnergyView from "@/components/calendar/EnergyView";
@@ -32,6 +30,9 @@ const CalendarPage = () => {
   const [savedTasks, setSavedTasks] = useLocalStorage("calendar-tasks", {});
   const [savedHabits, setSavedHabits] = useLocalStorage("calendar-habits", {});
   
+  const [dailyFocus, setDailyFocus] = useLocalStorage('calendar-daily-focus', {});
+  const [dailyPriorities, setDailyPriorities] = useLocalStorage('calendar-daily-priorities', {});
+  
   const { toggleTaskCompletion } = useTasksStorage();
   const { toggleHabit } = useHabitsStorage();
   
@@ -45,27 +46,31 @@ const CalendarPage = () => {
     savedBreaks
   );
 
-  // Sync with Focus Today data
   const [focusForToday, setFocusForToday] = useLocalStorage("focus-for-today", "");
   const [priorities, setPriorities] = useLocalStorage("top-3-priorities", []);
   const [currentEnergyLevel, setCurrentEnergyLevel] = useLocalStorage("current-energy-level", 5);
   const [plannedBreaks, setPlannedBreaks] = useLocalStorage("planned-breaks", []);
 
   useEffect(() => {
-    // On date change to today, update with the latest focus data
     const today = new Date();
     if (date && date.toDateString() === today.toDateString()) {
-      // Update energy level for today from stored current energy
       const updatedEnergyLevels = { ...savedEnergyLevels };
       updatedEnergyLevels[formattedDate] = currentEnergyLevel;
       setSavedEnergyLevels(updatedEnergyLevels);
       
-      // Update breaks for today from stored planned breaks
       const updatedBreaks = { ...savedBreaks };
       updatedBreaks[formattedDate] = plannedBreaks;
       setSavedBreaks(updatedBreaks);
+      
+      const updatedFocus = { ...dailyFocus };
+      updatedFocus[formattedDate] = focusForToday;
+      setDailyFocus(updatedFocus);
+      
+      const updatedPriorities = { ...dailyPriorities };
+      updatedPriorities[formattedDate] = priorities;
+      setDailyPriorities(updatedPriorities);
     }
-  }, [date, currentEnergyLevel, plannedBreaks]);
+  }, [date, currentEnergyLevel, plannedBreaks, focusForToday, priorities]);
 
   const openEditDialog = () => {
     setEnergyLevel(selectedDateData.energy);
@@ -76,27 +81,22 @@ const CalendarPage = () => {
   };
 
   const saveChanges = () => {
-    // Update energy levels
     const updatedEnergyLevels = { ...savedEnergyLevels };
     updatedEnergyLevels[formattedDate] = energyLevel;
     setSavedEnergyLevels(updatedEnergyLevels);
 
-    // Update breaks
     const updatedBreaks = { ...savedBreaks };
     updatedBreaks[formattedDate] = breaks;
     setSavedBreaks(updatedBreaks);
 
-    // Update tasks
     const updatedTasks = { ...savedTasks };
     updatedTasks[formattedDate] = tasks;
     setSavedTasks(updatedTasks);
 
-    // Update habits
     const updatedHabits = { ...savedHabits };
     updatedHabits[formattedDate] = habits;
     setSavedHabits(updatedHabits);
 
-    // If it's today, also update the focus, priorities, energy and breaks
     const today = new Date();
     if (date && date.toDateString() === today.toDateString()) {
       setCurrentEnergyLevel(energyLevel);
@@ -108,10 +108,8 @@ const CalendarPage = () => {
   };
   
   const handleToggleCalendarTask = (id: number, completed: boolean) => {
-    // Update in the task manager
     toggleTaskCompletion(id);
     
-    // Update in the calendar data
     if (savedTasks[formattedDate]) {
       const updatedTasks = { ...savedTasks };
       updatedTasks[formattedDate] = savedTasks[formattedDate].map(task => 
@@ -124,10 +122,8 @@ const CalendarPage = () => {
   };
   
   const handleToggleCalendarHabit = (id: number, completed: boolean) => {
-    // Toggle in habits store
     toggleHabit(id);
     
-    // Update in calendar data
     if (savedHabits[formattedDate]) {
       const updatedHabits = { ...savedHabits };
       updatedHabits[formattedDate] = savedHabits[formattedDate].map(habit => 
@@ -137,6 +133,14 @@ const CalendarPage = () => {
     }
     
     toast.success(`Habit marked as ${completed ? 'not completed' : 'completed'}`);
+  };
+  
+  const getDailyFocus = () => {
+    return dailyFocus[formattedDate] || "";
+  };
+  
+  const getDailyPriorities = () => {
+    return dailyPriorities[formattedDate] || [];
   };
   
   return (
@@ -175,7 +179,30 @@ const CalendarPage = () => {
                   }) : 'Select a date'}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {getDailyFocus() && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium">Focus for the Day</h3>
+                    <p className="text-sm bg-primary/5 p-3 rounded-md">{getDailyFocus()}</p>
+                  </div>
+                )}
+                
+                {getDailyPriorities().length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium">Top Priorities</h3>
+                    <div className="space-y-1">
+                      {getDailyPriorities().map((priority, index) => (
+                        <div key={index} className="text-sm bg-accent/40 p-2 rounded-md flex items-center">
+                          <div className="h-5 w-5 flex items-center justify-center bg-primary/10 rounded-full text-xs mr-2">
+                            {index + 1}
+                          </div>
+                          {priority}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
                   <TabsList className="w-full mb-4">
                     <TabsTrigger value="tasks" className="flex-1">
