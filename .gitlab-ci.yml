@@ -1,0 +1,18 @@
+
+stages:
+  - deploy
+
+deploy:
+  stage: deploy
+  script:
+    - |
+      if [ ! -d "/home/gitlab-runner/lovable-app/.git" ]; then
+        git clone git@gitlab.com:$CI_PROJECT_PATH.git /home/gitlab-runner/lovable-app
+      else
+        cd /home/gitlab-runner/lovable-app && git pull origin main
+      fi
+    - cd /home/gitlab-runner/lovable-app
+    - docker compose stop frontend backend || true  # Stop the services if running
+    - docker compose up --build -d
+  only:
+    - main

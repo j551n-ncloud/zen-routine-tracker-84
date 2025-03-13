@@ -12,19 +12,13 @@ export function useDataStorage<T>(key: string, initialValue: T) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Load data from server on initial mount
+  // Load data from API on initial mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
         
-        // Try to get from localStorage first (faster)
-        const localData = localStorage.getItem(key);
-        if (localData) {
-          setStoredValue(JSON.parse(localData));
-        }
-        
-        // Then fetch from server (might be more up-to-date)
+        // Fetch from server
         const response = await fetch(`${API_BASE_URL}/api/data/${key}`);
         
         if (!response.ok) {
@@ -35,21 +29,14 @@ export function useDataStorage<T>(key: string, initialValue: T) {
         
         if (data) {
           setStoredValue(data);
-          // Update localStorage with server data
-          localStorage.setItem(key, JSON.stringify(data));
-        } else if (!localData) {
-          // If no data on server and no local data, use initial value
+        } else {
+          // If no data on server, use initial value
           setStoredValue(initialValue);
         }
       } catch (err) {
         console.error('Error fetching data:', err);
         setError(err instanceof Error ? err : new Error(String(err)));
-        
-        // Fall back to localStorage if server fetch fails
-        const localData = localStorage.getItem(key);
-        if (localData) {
-          setStoredValue(JSON.parse(localData));
-        }
+        setStoredValue(initialValue);
       } finally {
         setIsLoading(false);
       }
@@ -58,7 +45,7 @@ export function useDataStorage<T>(key: string, initialValue: T) {
     fetchData();
   }, [key, initialValue]);
 
-  // Function to save data both to localStorage and server
+  // Function to save data to the server
   const setValue = async (value: T | ((val: T) => T)) => {
     try {
       // Allow value to be a function so we have same API as useState
@@ -68,10 +55,7 @@ export function useDataStorage<T>(key: string, initialValue: T) {
       // Save state
       setStoredValue(valueToStore);
       
-      // Save to localStorage for immediate access
-      localStorage.setItem(key, JSON.stringify(valueToStore));
-      
-      // Save to server in background
+      // Save to server
       const response = await fetch(`${API_BASE_URL}/api/data/${key}`, {
         method: 'POST',
         headers: {
@@ -94,7 +78,7 @@ export function useDataStorage<T>(key: string, initialValue: T) {
     setData: setValue, 
     isLoading, 
     error,
-    // For backward compatibility with useLocalStorage
+    // For backward compatibility
     0: storedValue, 
     1: setValue 
   } as const & { 0: T, 1: typeof setValue };
