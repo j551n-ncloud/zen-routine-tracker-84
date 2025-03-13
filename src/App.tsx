@@ -1,10 +1,13 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/providers/theme-provider";
+import { AuthProvider } from "@/hooks/use-auth";
 import Index from "./pages/Index";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Habits from "./pages/Habits";
 import Tasks from "./pages/Tasks";
@@ -13,6 +16,7 @@ import Insights from "./pages/Insights";
 import Achievements from "./pages/Achievements";
 import Settings from "./pages/Settings";
 import DailyRoutine from "./pages/DailyRoutine";
+import PrivateRoute from "./components/auth/PrivateRoute";
 import { useDbInit } from './hooks/use-db-init';
 import { Loader2 } from 'lucide-react';
 
@@ -51,23 +55,58 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/habits" element={<Habits />} />
-              <Route path="/tasks" element={<Tasks />} />
-              <Route path="/calendar" element={<CalendarPage />} />
-              <Route path="/insights" element={<Insights />} />
-              <Route path="/achievements" element={<Achievements />} />
-              <Route path="/daily-routine" element={<DailyRoutine />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={
+                  <PrivateRoute>
+                    <Index />
+                  </PrivateRoute>
+                } />
+                <Route path="/habits" element={
+                  <PrivateRoute>
+                    <Habits />
+                  </PrivateRoute>
+                } />
+                <Route path="/tasks" element={
+                  <PrivateRoute>
+                    <Tasks />
+                  </PrivateRoute>
+                } />
+                <Route path="/calendar" element={
+                  <PrivateRoute>
+                    <CalendarPage />
+                  </PrivateRoute>
+                } />
+                <Route path="/insights" element={
+                  <PrivateRoute>
+                    <Insights />
+                  </PrivateRoute>
+                } />
+                <Route path="/achievements" element={
+                  <PrivateRoute>
+                    <Achievements />
+                  </PrivateRoute>
+                } />
+                <Route path="/daily-routine" element={
+                  <PrivateRoute>
+                    <DailyRoutine />
+                  </PrivateRoute>
+                } />
+                <Route path="/settings" element={
+                  <PrivateRoute>
+                    <Settings />
+                  </PrivateRoute>
+                } />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
