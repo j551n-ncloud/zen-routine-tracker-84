@@ -8,64 +8,11 @@ let db: Database | null = null;
 let isInitializing = false;
 let initPromise: Promise<void> | null = null;
 
-// List of local paths and CDNs to try for the WASM file
-const WASM_SOURCES = [
-  // First, try local paths
-  '/sql-wasm.wasm',                                                      // In public folder
-  '/assets/sql-wasm.wasm',                                               // In assets folder
-  
-  // Then try raw CDNs from GitHub
-  'https://raw.githubusercontent.com/sql-js/sql.js/master/dist/sql-wasm.wasm',
-  
-  // Then try regular CDNs
-  'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.wasm',
-  'https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/sql-wasm.wasm',
-  'https://unpkg.com/sql.js@1.8.0/dist/sql-wasm.wasm',
-  'https://sql.js.org/dist/sql-wasm.wasm'
-];
-
 // IndexedDB database name and store constants
 const IDB_NAME = 'zentracker-db';
 const IDB_VERSION = 1;
 const IDB_STORE_NAME = 'sqlitedb';
 const IDB_KEY_NAME = 'db';
-
-// Function to download the WASM file from a URL and save it as a blob
-async function downloadWasmFile(url: string): Promise<ArrayBuffer | null> {
-  try {
-    console.log(`Attempting to download WASM from: ${url}`);
-    const response = await fetch(url, {
-      method: 'GET',
-      mode: 'cors',
-      cache: 'force-cache',
-      headers: {
-        'Accept': 'application/wasm',
-      },
-    });
-    
-    if (!response.ok) {
-      console.warn(`Failed to download WASM from ${url}: ${response.status} ${response.statusText}`);
-      return null;
-    }
-    
-    const contentType = response.headers.get('Content-Type');
-    if (contentType && !contentType.includes('application/wasm') && !contentType.includes('application/octet-stream')) {
-      console.warn(`Unexpected Content-Type: ${contentType} from ${url}`);
-    }
-    
-    const arrayBuffer = await response.arrayBuffer();
-    if (arrayBuffer.byteLength < 100) {
-      console.warn(`WASM file from ${url} seems too small (${arrayBuffer.byteLength} bytes)`);
-      return null;
-    }
-    
-    console.log(`Successfully downloaded WASM from ${url} (${arrayBuffer.byteLength} bytes)`);
-    return arrayBuffer;
-  } catch (err) {
-    console.warn(`Error downloading WASM from ${url}:`, err);
-    return null;
-  }
-}
 
 // Function to open the IndexedDB database
 const openIndexedDB = (): Promise<IDBDatabase> => {
@@ -159,48 +106,19 @@ export const initDatabase = async (): Promise<void> => {
   
   initPromise = new Promise(async (resolve, reject) => {
     try {
-      // Try to initialize SQL.js directly first
-      for (const wasmSource of WASM_SOURCES) {
-        try {
-          console.log(`Trying to initialize SQL.js with WASM from: ${wasmSource}`);
-          SQL = await initSqlJs({
-            locateFile: () => wasmSource
-          });
-          console.log(`Successfully initialized SQL.js with WASM from: ${wasmSource}`);
-          break;
-        } catch (err) {
-          console.warn(`Failed to initialize SQL.js with WASM from: ${wasmSource}`, err);
-        }
-      }
-
+      // Fixed approach for loading the WASM file
+      const wasmUrl = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.wasm';
+      
+      console.log(`Initializing SQL.js with WASM from: ${wasmUrl}`);
+      SQL = await initSqlJs({
+        locateFile: () => wasmUrl
+      });
+      
       if (!SQL) {
-        // If direct initialization failed, try to download the WASM file and use it
-        let wasmBuffer = null;
-        for (const wasmSource of WASM_SOURCES) {
-          wasmBuffer = await downloadWasmFile(wasmSource);
-          if (wasmBuffer) {
-            try {
-              // Create a Blob URL from the downloaded WASM
-              const blob = new Blob([wasmBuffer], { type: 'application/wasm' });
-              const blobUrl = URL.createObjectURL(blob);
-              
-              console.log(`Creating SQL.js from downloaded WASM blob: ${blobUrl}`);
-              SQL = await initSqlJs({
-                locateFile: () => blobUrl
-              });
-              
-              console.log(`Successfully initialized SQL.js with downloaded WASM`);
-              break;
-            } catch (err) {
-              console.warn('Failed to initialize SQL.js with downloaded WASM:', err);
-            }
-          }
-        }
+        throw new Error('Failed to initialize SQL.js');
       }
-
-      if (!SQL) {
-        throw new Error('Failed to initialize SQL.js. Please check your internet connection and try again.');
-      }
+      
+      console.log('SQL.js initialized successfully');
       
       // Try to load existing database from IndexedDB
       const savedDbData = await loadDbFromIndexedDB();

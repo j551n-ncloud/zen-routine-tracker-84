@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Initialize user table with default admin if needed
         await initializeUserTable();
         
-        // Try to get user from localStorage
+        // Try to get user from SQLite
         const savedUser = await getData<User>("auth-user");
         if (savedUser) {
           setUser(savedUser);
@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(authenticatedUser);
       
-      // Save to localStorage for persistence
+      // Save to SQLite for persistence
       await saveData("auth-user", authenticatedUser);
       
       toast.success(`Welcome back, ${authenticatedUser.username}!`);

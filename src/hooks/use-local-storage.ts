@@ -41,12 +41,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       }
     };
 
-    // Use a small delay to avoid flooding the database on initial load
-    const timeoutId = setTimeout(() => {
-      loadData();
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
+    loadData();
   }, [key, initialValue]);
 
   // Return a wrapped version of useState's setter function that
