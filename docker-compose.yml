@@ -5,7 +5,7 @@ services:
   app:
     build: .
     ports:
-      - "8080:8080"
+      - "89:8080"
     volumes:
       - ./src:/app/src
       - ./public:/app/public
@@ -38,8 +38,7 @@ services:
       - sqlite_data:/data
     environment:
       - DB_FILENAME=/data/zentracker.db
-    ports:
-      - "3000:3000"
+    # Removed the public port mapping so it's only accessible within the network
     networks:
       - zentracker_network
     restart: unless-stopped
