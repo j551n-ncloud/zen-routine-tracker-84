@@ -54,9 +54,10 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     };
 
     // Add a small delay to prevent too many simultaneous requests
+    // Also add randomization to the delay to distribute requests
     const timeoutId = setTimeout(() => {
       syncFromServer();
-    }, Math.random() * 1000); // Random delay up to 1 second to spread out requests
+    }, 500 + Math.random() * 2000); // Random delay between 500ms and 2.5s
 
     return () => clearTimeout(timeoutId);
   }, [key]);
@@ -76,12 +77,15 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       if (typeof window !== "undefined") {
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
         
-        // Send to server using our helper
-        saveData(key, valueToStore).catch(error => {
-          console.error("Error saving to server:", error);
-          // Don't show toast notifications for these errors
-          // as they can be noisy if the server is temporarily unavailable
-        });
+        // Send to server using our helper with a small delay to reduce concurrent requests
+        setTimeout(() => {
+          saveData(key, valueToStore).catch(error => {
+            console.error("Error saving to server:", error);
+            // We're intentionally not showing toasts for these errors
+            // as they can be noisy if the server is temporarily unavailable
+            // and we have the data safely in localStorage
+          });
+        }, Math.random() * 1000); // Random delay up to 1 second
       }
     } catch (error) {
       console.error("Error writing to localStorage:", error);

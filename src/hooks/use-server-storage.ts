@@ -25,21 +25,24 @@ export function useServerStorage<T>(key: string, initialValue: T) {
           // If no data on server, use initial value
           setStoredValue(initialValue);
           
-          // Try to save the initial value to server
-          try {
-            await saveData(key, initialValue);
-          } catch (saveError) {
-            console.warn(`Could not save initial value for ${key}:`, saveError);
-            // Don't show toast for this case
-          }
+          // Try to save the initial value to server with a small delay
+          setTimeout(async () => {
+            try {
+              await saveData(key, initialValue);
+            } catch (saveError) {
+              console.warn(`Could not save initial value for ${key}:`, saveError);
+              // Don't show toast for this case
+            }
+          }, Math.random() * 1000); // Random delay up to 1 second
         }
       } catch (err) {
         console.error('Error fetching data:', err);
         setError(err instanceof Error ? err : new Error(String(err)));
         setStoredValue(initialValue);
         
-        // Only show the toast if we're not on the custom domain with expected 404s
-        if (!(window.location.hostname === 'habit.j551n.com' && err.message?.includes('404'))) {
+        // Only show the toast for unexpected errors
+        // Skip 404 errors on the custom domain as they're expected during initial setup
+        if (!(window.location.hostname === 'habit.j551n.com' && String(err).includes('404'))) {
           toast.error("Failed to load data from server");
         }
       } finally {
@@ -47,10 +50,11 @@ export function useServerStorage<T>(key: string, initialValue: T) {
       }
     };
 
-    // Add a small delay to prevent too many simultaneous requests
+    // Add a substantial delay to prevent too many simultaneous requests
+    // This is especially important on initial page load
     const timeoutId = setTimeout(() => {
       fetchDataFromServer();
-    }, Math.random() * 1000); // Random delay up to 1 second to spread out requests
+    }, 1000 + Math.random() * 3000); // Random delay between 1s and 4s
 
     return () => clearTimeout(timeoutId);
   }, [key, initialValue]);
@@ -71,8 +75,9 @@ export function useServerStorage<T>(key: string, initialValue: T) {
       console.error('Error saving data:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
       
-      // Only show the toast if we're not on the custom domain with expected 404s
-      if (!(window.location.hostname === 'habit.j551n.com' && err.message?.includes('404'))) {
+      // Only show the toast for unexpected errors
+      // Skip 404 errors on the custom domain as they're expected during initial setup
+      if (!(window.location.hostname === 'habit.j551n.com' && String(err).includes('404'))) {
         toast.error("Failed to save data to server");
       }
     }
