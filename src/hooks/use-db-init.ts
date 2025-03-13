@@ -7,77 +7,30 @@ export function useDbInit() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 5;
 
   useEffect(() => {
     let isMounted = true;
     
-    // Check if running in a browser environment
-    const isBrowser = typeof window !== 'undefined';
-    
-    // Check if mock mode is enabled in localStorage
-    const storedMockMode = localStorage.getItem('zentracker-mock-mode') === 'true';
-    
-    if (storedMockMode) {
-      console.log('Mock mode enabled from localStorage');
-      setMockMode(true);
-      
-      if (isMounted) {
-        setIsInitialized(true);
-        setIsLoading(false);
-        setError(null);
-      }
-      return;
-    }
-    
     const init = async () => {
       try {
         setIsLoading(true);
-        console.log('Initializing database connection...');
+        console.log('Initializing local storage...');
         const success = await initDatabase();
         
         if (isMounted) {
           setIsInitialized(success);
           if (success) {
-            console.log('Database initialized successfully');
-            if (isMockMode()) {
-              toast.warning("SQLite REST API not available. Using mock mode.", {
-                description: "Data will be stored locally in your browser."
-              });
-            } else {
-              toast.success("Connected to SQLite REST API successfully");
-            }
+            console.log('Storage initialized successfully');
+            toast.success("Local storage initialized successfully");
           }
           setError(null);
         }
       } catch (err) {
-        console.error('Failed to initialize database:', err);
+        console.error('Failed to initialize storage:', err);
         
         if (isMounted) {
           setError(err instanceof Error ? err : new Error(String(err)));
-          
-          // Auto-enable mock mode after all retries fail
-          if (retryCount >= MAX_RETRIES) {
-            console.log('Max retries reached, enabling mock mode');
-            toast.error("Could not connect to database. Enabling offline mode.");
-            setMockMode(true);
-            setIsInitialized(true);
-            setError(null);
-            return;
-          }
-          
-          // Retry logic
-          if (retryCount < MAX_RETRIES) {
-            const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
-            console.log(`Retrying database initialization in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
-            
-            setTimeout(() => {
-              if (isMounted) {
-                setRetryCount(prev => prev + 1);
-              }
-            }, delay);
-          }
+          toast.error("Could not initialize storage. Using in-memory mode.");
         }
       } finally {
         if (isMounted) {
@@ -91,14 +44,12 @@ export function useDbInit() {
     return () => {
       isMounted = false;
     };
-  }, [retryCount]);
+  }, []);
 
   return { 
     isInitialized, 
     error, 
-    isLoading, 
-    retryCount, 
-    maxRetries: MAX_RETRIES,
+    isLoading,
     isMockMode: isMockMode(),
     setMockMode
   };

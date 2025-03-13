@@ -1,12 +1,12 @@
 
-// SQLite REST API configuration
+// Local storage configuration
 const config = {
-  // SQLite REST API connection details from environment variables
-  sqliteRest: {
-    url: import.meta.env.VITE_SQLITE_REST_URL || 'http://localhost:8080',
-    database: import.meta.env.VITE_SQLITE_DATABASE || '/data/zentracker.db',
-    // Don't force mock mode in browser environment
-    forceMockInBrowser: false
+  // App data storage configuration
+  storage: {
+    // Use local storage by default
+    useLocalStorage: true,
+    // Data directory path (for when using file system in Node.js environment)
+    dataPath: '/app/data'
   }
 };
 
