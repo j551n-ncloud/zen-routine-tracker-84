@@ -8,10 +8,7 @@ let db: Database | null = null;
 let isInitializing = false;
 let initPromise: Promise<void> | null = null;
 
-// URL for SQL.js wasm file - using relative path
-const SQL_WASM_PATH = '/node_modules/sql.js/dist/sql-wasm.wasm';
-
-// Function to initialize the database 
+// Function to initialize the database
 export const initDatabase = async (): Promise<void> => {
   if (isInitializing) {
     // If already initializing, return the existing promise
@@ -22,45 +19,38 @@ export const initDatabase = async (): Promise<void> => {
   
   initPromise = new Promise(async (resolve, reject) => {
     try {
+      // Initialize SQL.js
       console.log("Initializing SQL.js");
-      
-      // Initialize SQL.js with local path
       SQL = await initSqlJs({
-        locateFile: () => SQL_WASM_PATH
+        // Locate the wasm file
+        locateFile: file => `https://sql.js.org/dist/${file}`
       });
       
-      console.log("SQL.js initialized successfully");
-      
       // Load existing database from localStorage or create a new one
-      try {
-        const savedDbData = localStorage.getItem('zentracker-db');
-        
-        if (savedDbData) {
-          try {
-            // Convert base64 string back to Uint8Array
-            const binary = atob(savedDbData);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) {
-              bytes[i] = binary.charCodeAt(i);
-            }
-            
-            // Open the database
-            db = new SQL.Database(bytes);
-            console.log("Database loaded from localStorage");
-          } catch (loadError) {
-            console.error("Failed to load database from localStorage, creating new:", loadError);
-            db = new SQL.Database();
-            createTables();
+      const savedDbData = localStorage.getItem('zentracker-db');
+      
+      if (savedDbData) {
+        try {
+          // Convert base64 string back to Uint8Array
+          const binary = atob(savedDbData);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
           }
-        } else {
-          // Create a new database
+          
+          // Open the database
+          db = new SQL.Database(bytes);
+          console.log("Database loaded from localStorage");
+        } catch (loadError) {
+          console.error("Failed to load database from localStorage, creating new:", loadError);
           db = new SQL.Database();
           createTables();
-          console.log("New database created");
         }
-      } catch (dbError) {
-        console.error("Error during database creation:", dbError);
-        throw dbError;
+      } else {
+        // Create a new database
+        db = new SQL.Database();
+        createTables();
+        console.log("New database created");
       }
       
       isInitializing = false;
@@ -81,62 +71,57 @@ export const initDatabase = async (): Promise<void> => {
 const createTables = () => {
   if (!db) return;
   
-  try {
-    // Table for generic key-value pairs
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS key_value_store (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL
-      );
-    `);
-    
-    // Table for habits
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS habits (
-        id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL,
-        streak INTEGER DEFAULT 0,
-        completed BOOLEAN DEFAULT 0,
-        category TEXT,
-        icon TEXT
-      );
-    `);
-    
-    // Table for daily habit status
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS daily_habits (
-        date TEXT,
-        habit_id INTEGER,
-        completed BOOLEAN DEFAULT 0,
-        PRIMARY KEY (date, habit_id)
-      );
-    `);
-    
-    // Table for tasks
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS tasks (
-        id INTEGER PRIMARY KEY,
-        title TEXT NOT NULL,
-        priority TEXT CHECK(priority IN ('high', 'medium', 'low')),
-        completed BOOLEAN DEFAULT 0,
-        start_date TEXT,
-        due_date TEXT NOT NULL
-      );
-    `);
-    
-    // Table for calendar data
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS calendar_data (
-        date TEXT PRIMARY KEY,
-        data TEXT NOT NULL
-      );
-    `);
-    
-    console.log("Database tables created");
-  } catch (error) {
-    console.error("Error creating database tables:", error);
-    throw error;
-  }
+  // Table for generic key-value pairs
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS key_value_store (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `);
+  
+  // Table for habits
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS habits (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      streak INTEGER DEFAULT 0,
+      completed BOOLEAN DEFAULT 0,
+      category TEXT,
+      icon TEXT
+    );
+  `);
+  
+  // Table for daily habit status
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS daily_habits (
+      date TEXT,
+      habit_id INTEGER,
+      completed BOOLEAN DEFAULT 0,
+      PRIMARY KEY (date, habit_id)
+    );
+  `);
+  
+  // Table for tasks
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id INTEGER PRIMARY KEY,
+      title TEXT NOT NULL,
+      priority TEXT CHECK(priority IN ('high', 'medium', 'low')),
+      completed BOOLEAN DEFAULT 0,
+      start_date TEXT,
+      due_date TEXT NOT NULL
+    );
+  `);
+  
+  // Table for calendar data
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS calendar_data (
+      date TEXT PRIMARY KEY,
+      data TEXT NOT NULL
+    );
+  `);
+  
+  console.log("Database tables created");
 };
 
 // Save the database to localStorage

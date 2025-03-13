@@ -18,32 +18,19 @@ import Settings from "./pages/Settings";
 import DailyRoutine from "./pages/DailyRoutine";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import { useDbInit } from './hooks/use-db-init';
-import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 const queryClient = new QueryClient();
 
 function App() {
-  const { isInitialized, error, isLoading, attempts, maxAttempts } = useDbInit();
+  const { isInitialized, error } = useDbInit();
   
-  if (isLoading) {
+  if (!isInitialized) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <div className="text-center max-w-md p-6 bg-card border rounded-lg shadow-md">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-lg font-medium mb-2">Initializing SQLite database...</p>
-          <p className="text-muted-foreground mb-4">
-            {attempts > 0 ? `Attempt ${attempts}/${maxAttempts}` : "Setting up your local database"}
-          </p>
-          <div className="w-full bg-secondary rounded-full h-2 mb-6">
-            <div 
-              className="bg-primary h-2 rounded-full transition-all" 
-              style={{ width: `${(attempts / maxAttempts) * 100}%` }}
-            ></div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            This may take a moment. Please be patient.
-          </p>
+      <div className="flex h-screen w-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Initializing database...</p>
         </div>
       </div>
     );
@@ -51,38 +38,14 @@ function App() {
   
   if (error) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <div className="text-center max-w-md p-6 bg-card border border-destructive/20 rounded-lg shadow-md">
-          <AlertTriangle className="h-8 w-8 mx-auto mb-4 text-destructive" />
-          <h2 className="text-lg font-bold text-destructive mb-2">Database Initialization Failed</h2>
-          <div className="bg-destructive/10 p-4 rounded-md mb-4 text-left">
-            <p className="text-sm font-mono whitespace-pre-wrap">{error.message}</p>
+      <div className="flex h-screen w-screen items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-100 text-red-800 p-4 rounded-md mb-4">
+            <p className="font-semibold">Error initializing database</p>
+            <p className="text-sm">{error.message}</p>
           </div>
-          <p className="text-muted-foreground mb-4">
-            There was a problem setting up the SQLite database. This could be due to a compatibility issue with your browser.
-          </p>
-          <Button 
-            className="w-full" 
-            onClick={() => window.location.reload()}
-          >
-            <RefreshCw className="mr-2 h-4 w-4" /> Refresh and Try Again
-          </Button>
-          <p className="mt-4 text-xs text-muted-foreground">
-            Tip: Try using a different browser like Chrome or Firefox if the issue persists.
-          </p>
-        </div>
-      </div>
-    );
-  }
-  
-  if (!isInitialized) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <div className="text-center max-w-md p-6 bg-card border rounded-lg shadow-md">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-lg font-medium">Preparing application...</p>
           <p className="text-muted-foreground">
-            Almost ready!
+            Please refresh the page to try again.
           </p>
         </div>
       </div>
