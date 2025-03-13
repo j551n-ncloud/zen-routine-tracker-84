@@ -1,5 +1,6 @@
 
 import { toast } from 'sonner';
+import axios from 'axios';
 
 // Type definitions for different responses from the database
 export interface KeyValueData {
@@ -12,6 +13,9 @@ export interface CountResult {
 
 // State variables
 let mockMode = false;
+
+// SQLite REST API configuration
+const SQLITE_REST_BASE_URL = import.meta.env.VITE_SQLITE_REST_URL || 'http://localhost:8080';
 
 // Detect if running in browser environment
 const isBrowser = typeof window !== 'undefined';
@@ -32,6 +36,26 @@ export function setMockMode(value: boolean): void {
   // Save the setting to localStorage if in browser
   if (isBrowser) {
     localStorage.setItem('zentracker-mock-mode', value.toString());
+  }
+}
+
+// SQLite REST query execution
+async function sqliteRestQuery<T>(sql: string, params: any[] = []): Promise<T> {
+  try {
+    const response = await axios.post(`${SQLITE_REST_BASE_URL}/exec`, {
+      sql,
+      params
+    });
+    
+    // SQLite REST returns results in a specific format
+    if (response.data && response.data.results && response.data.results.length > 0) {
+      return response.data.results[0].rows as T;
+    }
+    
+    return [] as unknown as T;
+  } catch (error) {
+    console.error('SQLite REST API error:', error);
+    throw error;
   }
 }
 
@@ -110,46 +134,7 @@ const mockGetData = async (key: string): Promise<any> => {
   return null;
 };
 
-// Create actual MariaDB pool only in non-browser environments
-let pool: any = null;
-
-// Only import mysql2 if we're not in the browser
-if (!isBrowser) {
-  try {
-    // Dynamic import to avoid bundling mysql2 in the browser
-    const importDynamic = new Function('modulePath', 'return import(modulePath)');
-    
-    importDynamic('mysql2/promise').then((mysql2) => {
-      const { createPool } = mysql2;
-      
-      // Database connection configuration
-      const dbConfig = {
-        host: import.meta.env.VITE_DB_HOST || 'localhost',
-        port: Number(import.meta.env.VITE_DB_PORT) || 3306,
-        user: import.meta.env.VITE_DB_USER || 'zentracker',
-        password: import.meta.env.VITE_DB_PASSWORD || 'password',
-        database: import.meta.env.VITE_DB_NAME || 'zentracker',
-        waitForConnections: true,
-        connectionLimit: 10,
-        queueLimit: 0
-      };
-      
-      pool = createPool(dbConfig);
-      console.log('MariaDB pool created successfully');
-    }).catch(err => {
-      console.error('Failed to import mysql2/promise:', err);
-      setMockMode(true);
-    });
-  } catch (error) {
-    console.error('Error loading mysql2:', error);
-    setMockMode(true);
-  }
-} else {
-  console.log('Browser environment detected, using mock database implementation');
-  setMockMode(true);
-}
-
-// Initialize the database - connect to MariaDB if in Node.js, use mock mode if in browser
+// Initialize the database - check if SQLite REST API is available
 export async function initDatabase(): Promise<boolean> {
   // If we're in a browser, we always use mock mode
   if (isBrowser) {
@@ -165,19 +150,12 @@ export async function initDatabase(): Promise<boolean> {
   }
   
   try {
-    // Test the database connection if we have a pool
-    if (pool) {
-      const connection = await pool.getConnection();
-      console.log('Successfully connected to MariaDB database');
-      connection.release();
-      return true;
-    }
-    
-    console.error('Database pool not initialized');
-    setMockMode(true);
-    return false;
+    // Test the SQLite REST API connection with a simple query
+    await sqliteRestQuery('SELECT 1');
+    console.log('Successfully connected to SQLite REST API');
+    return true;
   } catch (error) {
-    console.error('Failed to initialize database:', error);
+    console.error('Failed to connect to SQLite REST API:', error);
     setMockMode(true);
     throw error;
   }
@@ -193,30 +171,18 @@ export async function executeQuery<T>(
     return mockExecuteQuery<T>(sql, params);
   }
   
-  // Not in mock mode, use actual database
-  if (!pool) {
-    console.error('Database not initialized. Falling back to mock mode.');
-    setMockMode(true);
-    return mockExecuteQuery<T>(sql, params);
-  }
-  
-  let connection: any = null;
-  
   try {
-    connection = await pool.getConnection();
-    const [rows] = await connection.query(sql, params);
-    return rows as T;
+    return await sqliteRestQuery<T>(sql, params);
   } catch (error) {
-    console.error('Database query error:', error);
-    throw error;
-  } finally {
-    if (connection) {
-      connection.release();
-    }
+    console.error('Query execution error:', error);
+    
+    // If error occurs, fall back to mock mode for this query
+    console.warn('Falling back to mock mode for this query due to error');
+    return mockExecuteQuery<T>(sql, params);
   }
 }
 
-// Store data in key-value format
+// Store data in key-value format (using a key_value_store table in SQLite)
 export async function saveData(key: string, value: any): Promise<void> {
   // In mock mode, use mock implementation
   if (mockMode || isBrowser) {
@@ -225,13 +191,22 @@ export async function saveData(key: string, value: any): Promise<void> {
   
   try {
     const serializedValue = JSON.stringify(value);
+    
+    // First check if the table exists, if not create it
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS key_value_store (
+        key_name TEXT PRIMARY KEY,
+        value_data TEXT
+      )
+    `);
+    
+    // Then insert or update the key-value pair
     const sql = `
-      INSERT INTO key_value_store (key_name, value_data) 
-      VALUES (?, ?) 
-      ON DUPLICATE KEY UPDATE value_data = ?
+      INSERT OR REPLACE INTO key_value_store (key_name, value_data) 
+      VALUES (?, ?)
     `;
     
-    await executeQuery(sql, [key, serializedValue, serializedValue]);
+    await executeQuery(sql, [key, serializedValue]);
   } catch (error) {
     console.error(`Error saving data for key ${key}:`, error);
     // Fall back to mock implementation on error
@@ -247,6 +222,14 @@ export async function getData(key: string): Promise<any> {
   }
   
   try {
+    // First check if the table exists, if not create it
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS key_value_store (
+        key_name TEXT PRIMARY KEY,
+        value_data TEXT
+      )
+    `);
+    
     const sql = `SELECT value_data FROM key_value_store WHERE key_name = ?`;
     const results = await executeQuery<KeyValueData[]>(sql, [key]);
     

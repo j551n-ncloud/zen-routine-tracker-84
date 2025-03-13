@@ -19,10 +19,23 @@ export function useDbInit() {
     // Check if mock mode is enabled in localStorage
     const storedMockMode = localStorage.getItem('zentracker-mock-mode') === 'true';
     
-    if (isBrowser || storedMockMode) {
-      console.log('Browser environment or mock mode enabled from localStorage');
+    if (isBrowser) {
+      console.log('Browser environment detected, enabling mock mode');
       
       // Always use mock mode in browser environments
+      setMockMode(true);
+      
+      if (isMounted) {
+        setIsInitialized(true);
+        setIsLoading(false);
+        setError(null);
+      }
+      return;
+    }
+    
+    // Use mock mode if explicitly set in localStorage
+    if (storedMockMode) {
+      console.log('Mock mode enabled from localStorage');
       setMockMode(true);
       
       if (isMounted) {

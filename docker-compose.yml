@@ -19,16 +19,12 @@ services:
     environment:
       - NODE_ENV=production
       - VITE_BASE_URL=/
-      - VITE_MARIADB_HOST=mariadb
-      - VITE_MARIADB_PORT=3306
-      - VITE_MARIADB_USER=zentracker
-      - VITE_MARIADB_PASSWORD=zentracker
-      - VITE_MARIADB_DATABASE=zentracker
+      - VITE_SQLITE_REST_URL=http://sqlite-rest:8080
     restart: unless-stopped
     networks:
       - zentracker_network
     depends_on:
-      - mariadb
+      - sqlite-rest
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
       interval: 30s
@@ -36,30 +32,25 @@ services:
       retries: 3
       start_period: 10s
 
-  mariadb:
-    build:
-      context: .
-      dockerfile: Dockerfile.mariadb
+  sqlite-rest:
+    image: ghcr.io/b4fun/sqlite-rest/server:main
     volumes:
-      - mariadb_data:/var/lib/mysql
+      - sqlite_data:/data
     environment:
-      - MYSQL_ROOT_PASSWORD=password
-      - MYSQL_DATABASE=zentracker
-      - MYSQL_USER=zentracker
-      - MYSQL_PASSWORD=zentracker
-    # No port exposure to keep it internal only
+      - SQLITE_DATABASE=/data/zentracker.db
+      - SQLITE_REST_ADDR=0.0.0.0:8080
     networks:
       - zentracker_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 10s
 
 networks:
   zentracker_network:
 
 volumes:
-  mariadb_data:
+  sqlite_data:
