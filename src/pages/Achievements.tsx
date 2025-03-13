@@ -63,7 +63,7 @@ const Achievements = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">Achievements</h1>
-          <div className="font-medium">
+          <div className="font-medium text-muted-foreground bg-muted py-1.5 px-3 rounded-full">
             Earned: {achievements.filter(a => a.earned).length}/{achievements.length}
           </div>
         </div>
@@ -72,10 +72,10 @@ const Achievements = () => {
           {achievements.map((achievement) => (
             <Card 
               key={achievement.id} 
-              className={`shadow-subtle ${achievement.earned ? "" : "opacity-70"}`}
+              className={`shadow-subtle transition-all duration-300 hover:shadow-md ${achievement.earned ? "border-green-200" : "opacity-70"}`}
             >
               <CardHeader className="flex flex-row items-center gap-4">
-                <div className="bg-muted p-2 rounded-lg">
+                <div className={`bg-muted p-2 rounded-lg ${achievement.earned ? "bg-green-50 dark:bg-green-900/20" : ""}`}>
                   {achievement.icon}
                 </div>
                 <div>
@@ -86,11 +86,11 @@ const Achievements = () => {
               <CardContent>
                 <div className="flex justify-between items-center">
                   {achievement.earned ? (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800/30">
                       Earned on {achievement.date}
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/30">
                       In Progress: {achievement.progress}
                     </Badge>
                   )}
