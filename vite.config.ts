@@ -7,13 +7,18 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
+    host: "0.0.0.0",
     port: 8080,
     cors: true,
     allowedHosts: [
       'habit.j551n.com', // Add the allowed host here
       'localhost',
+      'all', // Allow all hosts when in Docker
     ],
+  },
+  preview: {
+    host: "0.0.0.0",
+    port: 8080,
   },
   plugins: [
     react(),
