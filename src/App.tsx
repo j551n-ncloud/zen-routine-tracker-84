@@ -22,6 +22,7 @@ import { Loader2, AlertCircle, RefreshCw, Database, Settings2 } from 'lucide-rea
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import ErrorFallback from "@/components/error/ErrorFallback";
+import config from './services/api-config';
 
 const queryClient = new QueryClient();
 
@@ -45,50 +46,42 @@ const useMockDatabase = () => {
 };
 
 function App() {
-  const { isInitialized, error, isLoading, retryCount, maxRetries } = useDbInit();
-  const { isMockMode, toggleMockMode } = useMockDatabase();
+  const { isInitialized, error, isLoading, retryCount, maxRetries, isMockMode } = useDbInit();
+  const { toggleMockMode } = useMockDatabase();
   
-  // If mock mode is enabled, skip the database loading state
-  if (isMockMode) {
+  // If mock mode is enabled, show the database mode indicator
+  const ConnectionIndicator = () => {
+    if (isMockMode) {
+      return (
+        <div className="fixed bottom-4 right-4 z-50 flex items-center space-x-2 bg-yellow-100 dark:bg-yellow-900 p-2 rounded-md shadow-md text-sm">
+          <Database className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+          <span className="text-yellow-700 dark:text-yellow-300">Mock Database Mode</span>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={toggleMockMode}
+            className="h-7 px-2 text-xs"
+          >
+            Try SQLite
+          </Button>
+        </div>
+      );
+    }
     return (
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-          <AuthProvider>
-            <TooltipProvider>
-              <div className="fixed bottom-4 right-4 z-50 flex items-center space-x-2 bg-yellow-100 dark:bg-yellow-900 p-2 rounded-md shadow-md text-sm">
-                <Database className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-                <span className="text-yellow-700 dark:text-yellow-300">Mock Database Mode</span>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={toggleMockMode}
-                  className="h-7 px-2 text-xs"
-                >
-                  Disable
-                </Button>
-              </div>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/" element={<PrivateRoute><Index /></PrivateRoute>} />
-                  <Route path="/habits" element={<PrivateRoute><Habits /></PrivateRoute>} />
-                  <Route path="/tasks" element={<PrivateRoute><Tasks /></PrivateRoute>} />
-                  <Route path="/calendar" element={<PrivateRoute><CalendarPage /></PrivateRoute>} />
-                  <Route path="/insights" element={<PrivateRoute><Insights /></PrivateRoute>} />
-                  <Route path="/achievements" element={<PrivateRoute><Achievements /></PrivateRoute>} />
-                  <Route path="/daily-routine" element={<PrivateRoute><DailyRoutine /></PrivateRoute>} />
-                  <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
+      <div className="fixed bottom-4 right-4 z-50 flex items-center space-x-2 bg-green-100 dark:bg-green-900 p-2 rounded-md shadow-md text-sm">
+        <Database className="h-4 w-4 text-green-600 dark:text-green-400" />
+        <span className="text-green-700 dark:text-green-300">SQLite REST Connected</span>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={toggleMockMode}
+          className="h-7 px-2 text-xs"
+        >
+          Use Mock
+        </Button>
+      </div>
     );
-  }
+  };
   
   if (isLoading) {
     return (
@@ -96,7 +89,7 @@ function App() {
         <div className="text-center max-w-md p-6 border rounded-lg shadow-sm">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-xl font-medium mb-2">Initializing ZenTracker</p>
-          <p className="text-muted-foreground mb-4">This may take a moment...</p>
+          <p className="text-muted-foreground mb-4">Connecting to SQLite REST API at {config.sqliteRest.url}...</p>
           <div className="w-full bg-secondary rounded-full h-2.5 mb-2">
             <div className="bg-primary h-2.5 rounded-full animate-pulse" style={{ width: '100%' }}></div>
           </div>
@@ -118,6 +111,7 @@ function App() {
             <AlertCircle className="h-6 w-6 mx-auto mb-2" />
             <p className="font-semibold">Database Initialization Error</p>
             <p className="text-sm mt-2">{error.message}</p>
+            <p className="text-sm mt-2">Failed to connect to {config.sqliteRest.url}</p>
           </div>
           
           <p className="text-muted-foreground mb-4">
@@ -149,9 +143,9 @@ function App() {
           <div className="mt-4 text-xs text-muted-foreground">
             <p>If the problem persists, try:</p>
             <ul className="list-disc list-inside mt-1 text-left">
-              <li>Running ZenTracker within Docker</li>
-              <li>Checking your database connection settings</li>
-              <li>Enabling mock mode for development</li>
+              <li>Checking if SQLite REST API is running at {config.sqliteRest.url}</li>
+              <li>Verifying network connectivity to the API server</li>
+              <li>Checking CORS settings on the SQLite REST API</li>
             </ul>
           </div>
         </div>
@@ -164,6 +158,7 @@ function App() {
       <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
         <AuthProvider>
           <TooltipProvider>
+            <ConnectionIndicator />
             <Toaster />
             <Sonner />
             <BrowserRouter>
