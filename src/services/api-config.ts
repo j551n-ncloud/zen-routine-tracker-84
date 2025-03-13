@@ -1,6 +1,6 @@
 
 // API configuration
-const apiBaseUrl = import.meta.env.VITE_SQLITE_API_URL || 'http://sqlite:3000/api';
+const apiBaseUrl = import.meta.env.VITE_SQLITE_API_URL || 'https://sqlite:3000/api';
 
 export default {
   baseUrl: apiBaseUrl,

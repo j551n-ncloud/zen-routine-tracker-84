@@ -1,6 +1,6 @@
-
 import { toast } from "sonner";
 import axios from "axios";
+import apiConfig from "./api-config";
 
 // Initialize flag
 let isInitialized = false;
@@ -9,9 +9,6 @@ let initPromise: Promise<void> | null = null;
 
 // Performance timer
 let initStartTime = 0;
-
-// Base URL for SQLite container API
-const SQLITE_API_URL = 'http://sqlite:3000/api';
 
 // Function to initialize the database connection
 export const initDatabase = async (): Promise<void> => {
@@ -32,7 +29,7 @@ export const initDatabase = async (): Promise<void> => {
       console.log('Initializing SQLite database connection');
       
       // Test connection to SQLite container
-      const response = await axios.get(`${SQLITE_API_URL}/status`);
+      const response = await axios.get(apiConfig.endpoints.status);
       
       if (response.status === 200) {
         isInitialized = true;
@@ -167,7 +164,7 @@ export const executeQuery = async <T>(
     const startTime = performance.now();
     
     // Send query to SQLite container
-    const response = await axios.post(`${SQLITE_API_URL}/query`, {
+    const response = await axios.post(apiConfig.endpoints.query, {
       query,
       params
     });
@@ -202,7 +199,7 @@ export const executeWrite = async (
     const startTime = performance.now();
     
     // Send write operation to SQLite container
-    await axios.post(`${SQLITE_API_URL}/execute`, {
+    await axios.post(apiConfig.endpoints.execute, {
       query,
       params
     });
@@ -276,6 +273,3 @@ export const saveData = async <T>(key: string, value: T): Promise<void> => {
     throw error;
   }
 };
-
-// Functions for database export/import are removed as they're not applicable
-// with the container approach (container will handle persistence)

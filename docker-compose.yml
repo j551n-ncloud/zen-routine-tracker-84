@@ -19,7 +19,7 @@ services:
     environment:
       - NODE_ENV=production
       - VITE_BASE_URL=/
-      - VITE_SQLITE_API_URL=http://sqlite:3000/api
+      - VITE_SQLITE_API_URL=https://sqlite:3000/api
     restart: unless-stopped
     networks:
       - zentracker_network
