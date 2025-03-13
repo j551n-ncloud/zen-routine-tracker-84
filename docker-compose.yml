@@ -19,7 +19,6 @@ services:
     environment:
       - NODE_ENV=production
       - VITE_BASE_URL=/
-      - VITE_DATABASE_URL=/api
     restart: unless-stopped
     networks:
       - zentracker_network
@@ -38,20 +37,6 @@ services:
       dockerfile: Dockerfile.sqlite
     volumes:
       - sqlite_data:/db
-    networks:
-      - zentracker_network
-    restart: unless-stopped
-
-  # Add a reverse proxy to handle API requests and CORS
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - app
-      - sqlite
     networks:
       - zentracker_network
     restart: unless-stopped
