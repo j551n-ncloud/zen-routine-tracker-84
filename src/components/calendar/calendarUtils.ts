@@ -1,6 +1,6 @@
 
 // Sample data structure for new users
-export const sampleData = {
+export const sampleData: Record<string, CalendarDayData> = {
   "2023-07-15": {
     tasks: [
       { id: 1, title: "Team meeting", completed: true },
@@ -79,7 +79,8 @@ export const getSelectedDateData = (
   }
   
   if (savedEnergyLevels[formattedDate] !== undefined) {
-    data.energy = savedEnergyLevels[formattedDate];
+    // Ensure energy level is a number
+    data.energy = Number(savedEnergyLevels[formattedDate]) || 0;
   }
   
   if (savedBreaks[formattedDate]) {

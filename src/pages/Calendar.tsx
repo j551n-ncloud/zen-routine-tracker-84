@@ -30,13 +30,13 @@ const CalendarPage = () => {
   const [dailyFocusInput, setDailyFocusInput] = useState("");
   const [prioritiesInput, setPrioritiesInput] = useState<string[]>([]);
   
-  const [savedEnergyLevels, setSavedEnergyLevels] = useLocalStorage("energy-levels", {});
-  const [savedBreaks, setSavedBreaks] = useLocalStorage("breaks", {});
-  const [savedTasks, setSavedTasks] = useLocalStorage("calendar-tasks", {});
-  const [savedHabits, setSavedHabits] = useLocalStorage("calendar-habits", {});
+  const [savedEnergyLevels, setSavedEnergyLevels] = useLocalStorage<Record<string, number>>("energy-levels", {});
+  const [savedBreaks, setSavedBreaks] = useLocalStorage<Record<string, string[]>>("breaks", {});
+  const [savedTasks, setSavedTasks] = useLocalStorage<Record<string, any[]>>("calendar-tasks", {});
+  const [savedHabits, setSavedHabits] = useLocalStorage<Record<string, any[]>>("calendar-habits", {});
   
-  const [dailyFocus, setDailyFocus] = useLocalStorage('calendar-daily-focus', {});
-  const [dailyPriorities, setDailyPriorities] = useLocalStorage('calendar-daily-priorities', {});
+  const [dailyFocus, setDailyFocus] = useLocalStorage<Record<string, string>>('calendar-daily-focus', {});
+  const [dailyPriorities, setDailyPriorities] = useLocalStorage<Record<string, string[]>>('calendar-daily-priorities', {});
   
   const { toggleTaskCompletion } = useTasksStorage();
   const { toggleHabit, habits: allHabits } = useHabitsStorage();
@@ -65,9 +65,9 @@ const CalendarPage = () => {
   };
 
   const [focusForToday, setFocusForToday] = useLocalStorage("focus-for-today", "");
-  const [priorities, setPriorities] = useLocalStorage("top-3-priorities", []);
-  const [currentEnergyLevel, setCurrentEnergyLevel] = useLocalStorage("current-energy-level", 5);
-  const [plannedBreaks, setPlannedBreaks] = useLocalStorage("planned-breaks", []);
+  const [priorities, setPriorities] = useLocalStorage<string[]>("top-3-priorities", []);
+  const [currentEnergyLevel, setCurrentEnergyLevel] = useLocalStorage<number>("current-energy-level", 5);
+  const [plannedBreaks, setPlannedBreaks] = useLocalStorage<string[]>("planned-breaks", []);
 
   useEffect(() => {
     const today = new Date();
