@@ -2,7 +2,6 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { getData, saveData, executeQuery, isMockMode } from '../services/db-service';
 import { toast } from 'sonner';
-import { RowDataPacket } from 'mysql2';
 
 // Define types
 export interface User {
@@ -19,7 +18,7 @@ interface AuthContextType {
 }
 
 // Define row data interface for user query
-interface UserRow extends RowDataPacket {
+interface UserRow {
   username: string;
   is_admin: number;
 }

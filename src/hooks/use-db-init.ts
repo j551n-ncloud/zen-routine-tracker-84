@@ -13,11 +13,16 @@ export function useDbInit() {
   useEffect(() => {
     let isMounted = true;
     
+    // Check if running in a browser environment
+    const isBrowser = typeof window !== 'undefined';
+    
     // Check if mock mode is enabled in localStorage
     const storedMockMode = localStorage.getItem('zentracker-mock-mode') === 'true';
     
-    if (storedMockMode) {
-      console.log('Mock database mode is enabled from localStorage');
+    if (isBrowser || storedMockMode) {
+      console.log('Browser environment or mock mode enabled from localStorage');
+      
+      // Always use mock mode in browser environments
       setMockMode(true);
       
       if (isMounted) {
@@ -43,12 +48,12 @@ export function useDbInit() {
         if (isMounted) {
           setError(err instanceof Error ? err : new Error(String(err)));
           
-          // If this is a browser environment, enable mock mode
-          if (typeof window !== 'undefined') {
+          // If we're in a browser, always use mock mode
+          if (isBrowser) {
             console.log('Browser environment detected, enabling mock mode');
             setMockMode(true);
             localStorage.setItem('zentracker-mock-mode', 'true');
-            toast.info("Browser environment detected. Using local storage for data.");
+            toast.info("Using local storage for data in browser environment.");
             setIsInitialized(true);
             setError(null);
             setIsLoading(false);
