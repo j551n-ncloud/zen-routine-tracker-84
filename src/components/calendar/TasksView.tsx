@@ -1,3 +1,4 @@
+
 import React from "react";
 import { CheckCircle, X, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,13 +10,16 @@ interface TasksViewProps {
     title: string;
     completed: boolean;
   }>;
+  onToggleTask?: (id: number, completed: boolean) => void;
 }
 
-const TasksView: React.FC<TasksViewProps> = ({ tasks }) => {
+const TasksView: React.FC<TasksViewProps> = ({ tasks, onToggleTask }) => {
   const handleToggleTask = (id: number, completed: boolean) => {
-    // This will be implemented in the Calendar component
-    // We'll pass this up via props
-    toast.success(`Task marked as ${completed ? 'not completed' : 'completed'}`);
+    if (onToggleTask) {
+      onToggleTask(id, completed);
+    } else {
+      toast.success(`Task marked as ${completed ? 'not completed' : 'completed'}`);
+    }
   };
 
   return (

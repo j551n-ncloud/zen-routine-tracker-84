@@ -89,7 +89,7 @@ const Timeline: React.FC<TimelineProps> = ({
     <div className="space-y-8">
       {dates.map((date, index) => {
         const stats = calculateStats(date);
-        const focus = dailyFocus[date];
+        const focus = dailyFocus[date] || "";
         const priorities = dailyPriorities[date] || [];
         const breaks = savedBreaks[date] || [];
         const tasks = savedTasks[date] || [];
@@ -114,6 +114,39 @@ const Timeline: React.FC<TimelineProps> = ({
             
             {timelineTab === 'daily' && (
               <div className="ml-14 space-y-3">
+                {/* Daily Focus if available */}
+                {focus && (
+                  <div className={`p-3 rounded-md ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                    <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
+                      <Target className="h-4 w-4 text-blue-500" />
+                      Daily Focus
+                    </h4>
+                    <p className={`text-sm px-3 py-2 rounded ${isDarkMode ? 'bg-slate-700' : 'bg-white'}`}>
+                      {focus}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Top Priorities if available */}
+                {priorities.length > 0 && (
+                  <div className={`p-3 rounded-md ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                    <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      Top Priorities
+                    </h4>
+                    <div className="space-y-1">
+                      {priorities.map((priority, idx) => (
+                        <div key={idx} className={`text-sm px-3 py-2 rounded flex items-center ${isDarkMode ? 'bg-slate-700' : 'bg-white'}`}>
+                          <div className="h-5 w-5 flex items-center justify-center bg-yellow-500/20 rounded-full text-xs mr-2">
+                            {idx + 1}
+                          </div>
+                          {priority}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              
                 {breaks.length > 0 && (
                   <div className={`p-3 rounded-md ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
                     <h4 className="text-sm font-medium flex items-center gap-2 mb-2">

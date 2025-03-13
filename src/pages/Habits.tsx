@@ -1,7 +1,7 @@
 
 import React from "react";
 import HabitTracker from "@/components/habits/HabitTracker";
-import MonthlyView from "@/components/habits/MonthlyView";
+import DayView from "@/components/habits/DayView";
 import AppLayout from "@/components/layout/AppLayout";
 
 const Habits = () => {
@@ -18,7 +18,7 @@ const Habits = () => {
           </div>
           
           <div>
-            <MonthlyView />
+            <DayView />
           </div>
         </div>
       </div>

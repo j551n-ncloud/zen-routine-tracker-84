@@ -40,7 +40,7 @@ const CalendarPage = () => {
   const [dailyPriorities, setDailyPriorities] = useLocalStorage('calendar-daily-priorities', {});
   
   const { toggleTaskCompletion } = useTasksStorage();
-  const { toggleHabit } = useHabitsStorage();
+  const { toggleHabit, habits: allHabits } = useHabitsStorage();
   
   const formattedDate = formatDate(date);
   
@@ -88,6 +88,7 @@ const CalendarPage = () => {
     }
   }, []);
 
+  // Sync today's data with the calendar data
   useEffect(() => {
     const today = new Date();
     if (date && date.toDateString() === today.toDateString()) {
@@ -108,6 +109,39 @@ const CalendarPage = () => {
       setDailyPriorities(updatedPriorities);
     }
   }, [date, currentEnergyLevel, plannedBreaks, focusForToday, priorities]);
+
+  useEffect(() => {
+    // Make sure all habits are included in the calendar for the selected date
+    if (date && allHabits.length > 0) {
+      // If we don't have habits for this date yet, create them from the master habits list
+      if (!savedHabits[formattedDate]) {
+        const updatedHabits = { ...savedHabits };
+        updatedHabits[formattedDate] = allHabits.map(habit => ({
+          id: habit.id,
+          name: habit.name,
+          completed: habit.completed
+        }));
+        setSavedHabits(updatedHabits);
+      } else {
+        // Check if all habits from master list are included
+        const currentHabits = savedHabits[formattedDate];
+        const currentHabitIds = new Set(currentHabits.map(h => h.id));
+        
+        const habitsToAdd = allHabits.filter(h => !currentHabitIds.has(h.id))
+          .map(h => ({
+            id: h.id,
+            name: h.name,
+            completed: false
+          }));
+        
+        if (habitsToAdd.length > 0) {
+          const updatedHabits = { ...savedHabits };
+          updatedHabits[formattedDate] = [...currentHabits, ...habitsToAdd];
+          setSavedHabits(updatedHabits);
+        }
+      }
+    }
+  }, [date, allHabits, formattedDate]);
 
   const openEditDialog = () => {
     // Set the values based on the selected date
@@ -160,28 +194,30 @@ const CalendarPage = () => {
   };
   
   const handleToggleCalendarTask = (id: number, completed: boolean) => {
-    toggleTaskCompletion(id);
-    
     if (savedTasks[formattedDate]) {
       const updatedTasks = { ...savedTasks };
       updatedTasks[formattedDate] = savedTasks[formattedDate].map(task => 
         task.id === id ? { ...task, completed: !completed } : task
       );
       setSavedTasks(updatedTasks);
+      
+      // Also update the task in the main tasks list
+      toggleTaskCompletion(id);
     }
     
     toast.success(`Task marked as ${completed ? 'not completed' : 'completed'}`);
   };
   
   const handleToggleCalendarHabit = (id: number, completed: boolean) => {
-    toggleHabit(id);
-    
     if (savedHabits[formattedDate]) {
       const updatedHabits = { ...savedHabits };
       updatedHabits[formattedDate] = savedHabits[formattedDate].map(habit => 
         habit.id === id ? { ...habit, completed: !completed } : habit
       );
       setSavedHabits(updatedHabits);
+      
+      // Also update the habit in the main habits list
+      toggleHabit(id);
     }
     
     toast.success(`Habit marked as ${completed ? 'not completed' : 'completed'}`);
@@ -195,7 +231,7 @@ const CalendarPage = () => {
     return dailyPriorities[formattedDate] || [];
   };
 
-  const handleEditBreaks = () => {
+  const handleEditDay = () => {
     openEditDialog();
   };
   
@@ -204,7 +240,8 @@ const CalendarPage = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
-          <Button variant="outline" onClick={openEditDialog}>
+          <Button variant="outline" onClick={handleEditDay}>
+            <Edit className="h-4 w-4 mr-2" />
             Edit Day
           </Button>
         </div>
@@ -301,7 +338,7 @@ const CalendarPage = () => {
                 <Card className="shadow-subtle">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-sm">Energy & Breaks</CardTitle>
-                    <Button variant="ghost" size="sm" onClick={handleEditBreaks}>
+                    <Button variant="ghost" size="sm" onClick={handleEditDay}>
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
                     </Button>
