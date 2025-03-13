@@ -21,6 +21,9 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
+// Reserved routes that should not be treated as data keys
+const RESERVED_ROUTES = ['health', 'api'];
+
 // Middleware
 app.use(cors({
   origin: '*', // Allow requests from any origin for development
@@ -95,27 +98,84 @@ const handleDataPost = (req, res) => {
   }
 };
 
-// Handle all possible path formats
+// ------ Route handlers ------
 
-// 1. /data/:key (original path format)
+// Special root handler for API
+app.get('/api', (req, res) => {
+  res.json({ status: 'ok', message: 'API is running' });
+});
+
+// 1. Original path formats with /data/ prefix
 app.get('/data/:key', handleDataGet);
 app.post('/data/:key', handleDataPost);
 
-// 2. /api/data/:key (through Cloudflare tunnels - original)
+// 2. API routes with /data/ prefix (for Cloudflare tunnels)
 app.get('/api/data/:key', handleDataGet);
 app.post('/api/data/:key', handleDataPost);
 
-// 3. Direct key access without /data/ prefix (new format matching client code)
-app.get('/:key', handleDataGet);
-app.post('/:key', handleDataPost);
+// 3. API routes without /data/ prefix (new format)
+app.get('/api/:key', (req, res, next) => {
+  // Skip reserved routes like '/api/health'
+  if (RESERVED_ROUTES.includes(req.params.key)) {
+    return next();
+  }
+  handleDataGet(req, res);
+});
 
-// 4. /api/:key (through Cloudflare tunnels - new format)
-app.get('/api/:key', handleDataGet);
-app.post('/api/:key', handleDataPost);
+app.post('/api/:key', (req, res, next) => {
+  // Skip reserved routes
+  if (RESERVED_ROUTES.includes(req.params.key)) {
+    return next();
+  }
+  handleDataPost(req, res);
+});
 
-// 5. Handle root requests of /api to support Cloudflare tunnel configuration
-app.get('/api', (req, res) => {
-  res.json({ status: 'ok', message: 'API is running' });
+// 4. Root level keys (/:key) - only for data keys, not for other routes
+// This needs to be at the end of the routes so it doesn't catch everything
+app.get('/:key', (req, res, next) => {
+  // Skip reserved routes like '/health' and avoid catching everything
+  if (RESERVED_ROUTES.includes(req.params.key)) {
+    return next();
+  }
+  
+  // Make sure this is actually a data key request, not some other route
+  const key = req.params.key;
+  
+  // Check if it's a common ZenTracker key pattern
+  const isZenTrackerKey = key.startsWith('zen-tracker-') || 
+                          key.startsWith('calendar-') || 
+                          key === 'habits' ||
+                          key === 'tasks';
+  
+  if (isZenTrackerKey) {
+    handleDataGet(req, res);
+  } else {
+    // If it doesn't look like a data key, pass to the next handler
+    next();
+  }
+});
+
+app.post('/:key', (req, res, next) => {
+  // Skip reserved routes
+  if (RESERVED_ROUTES.includes(req.params.key)) {
+    return next();
+  }
+  
+  // Make sure this is actually a data key request, not some other route
+  const key = req.params.key;
+  
+  // Check if it's a common ZenTracker key pattern
+  const isZenTrackerKey = key.startsWith('zen-tracker-') || 
+                          key.startsWith('calendar-') || 
+                          key === 'habits' ||
+                          key === 'tasks';
+  
+  if (isZenTrackerKey) {
+    handleDataPost(req, res);
+  } else {
+    // If it doesn't look like a data key, pass to the next handler
+    next();
+  }
 });
 
 // Add explicit handling for OPTIONS requests
