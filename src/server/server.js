@@ -29,8 +29,8 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// API routes need to be prefixed with /api
-app.get('/api/data/:key', (req, res) => {
+// Data endpoints - note that the /api prefix is now handled by nginx
+app.get('/data/:key', (req, res) => {
   try {
     const { key } = req.params;
     const filePath = path.join(DATA_DIR, `${key}.json`);
@@ -47,8 +47,7 @@ app.get('/api/data/:key', (req, res) => {
   }
 });
 
-// API routes need to be prefixed with /api
-app.post('/api/data/:key', (req, res) => {
+app.post('/data/:key', (req, res) => {
   try {
     const { key } = req.params;
     const { value } = req.body;
@@ -63,18 +62,9 @@ app.post('/api/data/:key', (req, res) => {
   }
 });
 
-// Handle non-api routes for SPA - Redirect to index.html
-app.get('*', (req, res, next) => {
-  if (req.url.startsWith('/api/')) {
-    return next(); // Skip for API routes
-  }
-  
-  // For all other routes, respond with a message that API routes should use /api prefix
-  if (req.accepts('json')) {
-    res.status(404).json({ error: 'Not found. API routes should use /api prefix.' });
-  } else {
-    res.status(404).send('Not found. API routes should use /api prefix.');
-  }
+// Fallback for all other routes
+app.get('*', (req, res) => {
+  res.status(404).json({ error: 'Not found. Use /data/:key for data operations.' });
 });
 
 // Start the server
