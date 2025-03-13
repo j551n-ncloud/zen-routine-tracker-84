@@ -8,6 +8,9 @@ let isInitializing = false;
 let initPromise: Promise<void> | null = null;
 let db: any = null;
 
+// Performance timer
+let initStartTime = 0;
+
 // Function to initialize the database
 export const initDatabase = async (): Promise<void> => {
   if (isInitialized) {
@@ -20,6 +23,16 @@ export const initDatabase = async (): Promise<void> => {
   }
   
   isInitializing = true;
+  initStartTime = performance.now();
+  
+  // Preload the WASM file at startup to improve performance
+  const preloadLink = document.createElement('link');
+  preloadLink.rel = 'preload';
+  preloadLink.href = '/sql-wasm.wasm';
+  preloadLink.as = 'fetch';
+  preloadLink.type = 'application/wasm';
+  preloadLink.crossOrigin = 'anonymous';
+  document.head.appendChild(preloadLink);
   
   initPromise = new Promise(async (resolve, reject) => {
     try {
@@ -39,7 +52,9 @@ export const initDatabase = async (): Promise<void> => {
       
       isInitialized = true;
       isInitializing = false;
-      console.log('Database initialized successfully');
+      
+      const initTime = Math.round(performance.now() - initStartTime);
+      console.log(`Database initialized successfully in ${initTime}ms`);
       resolve();
     } catch (error) {
       console.error("Failed to initialize database:", error);
@@ -55,6 +70,9 @@ export const initDatabase = async (): Promise<void> => {
 
 // Create the database tables
 const createTables = async () => {
+  // Initialize table creation performance metrics
+  const tableStartTime = performance.now();
+  
   // Table for generic key-value pairs
   await executeWrite(`
     CREATE TABLE IF NOT EXISTS key_value_store (
@@ -128,13 +146,18 @@ const createTables = async () => {
     console.log("Created default admin user");
   }
   
-  console.log("Database tables created or verified");
+  const tableTime = Math.round(performance.now() - tableStartTime);
+  console.log(`Database tables created or verified in ${tableTime}ms`);
 };
+
+// Create a more efficient query executor with caching
+const queryCache = new Map<string, any[]>();
 
 // Function to execute a query and return the results
 export const executeQuery = async <T>(
   query: string, 
-  params: any[] = []
+  params: any[] = [],
+  useCache = false
 ): Promise<T[]> => {
   await ensureDatabaseInitialized();
   
@@ -147,6 +170,15 @@ export const executeQuery = async <T>(
       });
     }
     
+    // Check cache for read operations
+    if (useCache && finalQuery.trim().toLowerCase().startsWith('select')) {
+      const cacheKey = finalQuery;
+      if (queryCache.has(cacheKey)) {
+        return queryCache.get(cacheKey) as T[];
+      }
+    }
+    
+    const startTime = performance.now();
     const stmt = db.prepare(finalQuery);
     const results: T[] = [];
     
@@ -155,6 +187,17 @@ export const executeQuery = async <T>(
     }
     
     stmt.free();
+    
+    // Add to cache for read operations
+    if (useCache && finalQuery.trim().toLowerCase().startsWith('select')) {
+      queryCache.set(finalQuery, results);
+    }
+    
+    const queryTime = Math.round(performance.now() - startTime);
+    if (queryTime > 50) {
+      console.warn(`Slow query (${queryTime}ms): ${finalQuery}`);
+    }
+    
     return results;
   } catch (error) {
     console.error("Query execution error:", error, "Query:", query, "Params:", params);
@@ -178,7 +221,16 @@ export const executeWrite = async (
       });
     }
     
+    const startTime = performance.now();
     db.run(finalQuery);
+    
+    // Clear cache on write operations as data may have changed
+    queryCache.clear();
+    
+    const writeTime = Math.round(performance.now() - startTime);
+    if (writeTime > 50) {
+      console.warn(`Slow write operation (${writeTime}ms): ${finalQuery}`);
+    }
   } catch (error) {
     console.error("Write operation error:", error, "Query:", query, "Params:", params);
     throw error;
@@ -197,6 +249,7 @@ export const saveDatabaseToStorage = (): void => {
   if (!db) return;
   
   try {
+    const startTime = performance.now();
     const data = db.export();
     const buffer = new Uint8Array(data);
     const blob = new Blob([buffer]);
@@ -206,7 +259,8 @@ export const saveDatabaseToStorage = (): void => {
     reader.onload = function() {
       if (typeof reader.result === 'string') {
         localStorage.setItem('zentracker-database', reader.result);
-        console.log('Database saved to localStorage');
+        const saveTime = Math.round(performance.now() - startTime);
+        console.log(`Database saved to localStorage in ${saveTime}ms`);
       }
     };
     reader.readAsDataURL(blob);
@@ -215,9 +269,10 @@ export const saveDatabaseToStorage = (): void => {
   }
 };
 
-// Function to load the database from localStorage
+// Function to load the database from localStorage with improved performance
 export const loadDatabaseFromStorage = async (): Promise<boolean> => {
   try {
+    const startTime = performance.now();
     const data = localStorage.getItem('zentracker-database');
     if (!data) return false;
     
@@ -235,7 +290,9 @@ export const loadDatabaseFromStorage = async (): Promise<boolean> => {
       });
       db = new SQL.Database(array);
       isInitialized = true;
-      console.log('Database loaded from localStorage');
+      
+      const loadTime = Math.round(performance.now() - startTime);
+      console.log(`Database loaded from localStorage in ${loadTime}ms`);
       return true;
     }
     
@@ -246,12 +303,13 @@ export const loadDatabaseFromStorage = async (): Promise<boolean> => {
   }
 };
 
-// Function to get data from key-value store
+// Function to get data from key-value store with caching
 export const getData = async <T>(key: string): Promise<T | null> => {
   try {
     const results = await executeQuery<{ value: string }>(
       "SELECT value FROM key_value_store WHERE key = ?",
-      [key]
+      [key],
+      true // use cache
     );
     
     if (results.length > 0) {
