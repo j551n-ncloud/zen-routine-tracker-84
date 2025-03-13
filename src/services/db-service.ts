@@ -8,6 +8,15 @@ let db: Database | null = null;
 let isInitializing = false;
 let initPromise: Promise<void> | null = null;
 
+// List of CDNs to try for the WASM file
+const WASM_CDNS = [
+  '/sql-wasm.wasm', // Local copy (if included in public folder)
+  'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.wasm',
+  'https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/sql-wasm.wasm',
+  'https://unpkg.com/sql.js@1.8.0/dist/sql-wasm.wasm',
+  'https://sql.js.org/dist/sql-wasm.wasm'
+];
+
 // Function to initialize the database
 export const initDatabase = async (): Promise<void> => {
   if (isInitializing) {
@@ -19,12 +28,28 @@ export const initDatabase = async (): Promise<void> => {
   
   initPromise = new Promise(async (resolve, reject) => {
     try {
-      // Initialize SQL.js
-      console.log("Initializing SQL.js");
-      SQL = await initSqlJs({
-        // Locate the wasm file
-        locateFile: file => `https://sql.js.org/dist/${file}`
-      });
+      // Try each CDN until one works
+      let sqlInitialized = false;
+      let lastError = null;
+
+      for (const cdn of WASM_CDNS) {
+        try {
+          console.log(`Trying to initialize SQL.js with WASM from: ${cdn}`);
+          SQL = await initSqlJs({
+            locateFile: file => cdn
+          });
+          sqlInitialized = true;
+          console.log(`Successfully initialized SQL.js with WASM from: ${cdn}`);
+          break;
+        } catch (err) {
+          console.warn(`Failed to initialize SQL.js with WASM from: ${cdn}`, err);
+          lastError = err;
+        }
+      }
+
+      if (!sqlInitialized) {
+        throw new Error(`Failed to initialize SQL.js from all CDNs. Last error: ${lastError}`);
+      }
       
       // Load existing database from localStorage or create a new one
       const savedDbData = localStorage.getItem('zentracker-db');

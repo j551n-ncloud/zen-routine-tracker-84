@@ -18,19 +18,20 @@ import Settings from "./pages/Settings";
 import DailyRoutine from "./pages/DailyRoutine";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import { useDbInit } from './hooks/use-db-init';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 const queryClient = new QueryClient();
 
 function App() {
-  const { isInitialized, error } = useDbInit();
+  const { isInitialized, error, isLoading } = useDbInit();
   
-  if (!isInitialized) {
+  if (isLoading || !isInitialized) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Initializing database...</p>
+          <p className="text-xl font-medium mb-2">Initializing ZenTracker</p>
+          <p className="text-muted-foreground">This may take a moment...</p>
         </div>
       </div>
     );
@@ -39,14 +40,21 @@ function App() {
   if (error) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md">
           <div className="bg-red-100 text-red-800 p-4 rounded-md mb-4">
-            <p className="font-semibold">Error initializing database</p>
-            <p className="text-sm">{error.message}</p>
+            <AlertCircle className="h-6 w-6 mx-auto mb-2" />
+            <p className="font-semibold">Database Initialization Error</p>
+            <p className="text-sm mt-2">{error.message}</p>
           </div>
           <p className="text-muted-foreground">
-            Please refresh the page to try again.
+            Please try refreshing the page. If the problem persists, check your browser's localStorage settings or try a different browser.
           </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          >
+            Refresh Page
+          </button>
         </div>
       </div>
     );
