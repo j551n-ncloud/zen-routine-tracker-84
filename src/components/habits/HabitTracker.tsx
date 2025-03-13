@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { 
   CheckCircle, 
@@ -21,7 +20,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useHabitsStorage, Habit } from "@/hooks/use-habits-storage";
-import { Checkbox } from "@/components/ui/checkbox";
 
 // Sample habit categories and their associated icons
 const habitCategories = [
@@ -114,25 +112,17 @@ const HabitTracker: React.FC = () => {
           return (
             <div 
               key={habit.id}
-              className="group relative bg-card rounded-xl border p-4 shadow-subtle hover-scale overflow-hidden"
+              className={`group relative rounded-xl border p-4 shadow-subtle hover-scale overflow-hidden cursor-pointer ${habit.completed ? "bg-green-100/50" : "bg-card"}`}
+              onClick={() => handleToggleCompletion(habit.id, habit.completed)}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => handleToggleCompletion(habit.id, habit.completed)}
-                    className={cn(
-                      "h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300",
-                      habit.completed 
-                        ? "bg-primary/10 text-primary" 
-                        : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                    )}
-                  >
-                    {habit.completed ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <IconComponent className="h-5 w-5" />
-                    )}
-                  </button>
+                  <div className={cn(
+                    "h-10 w-10 rounded-full flex items-center justify-center",
+                    habit.completed ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground"
+                  )}>
+                    <IconComponent className="h-5 w-5" />
+                  </div>
                   <div>
                     <h3 className="font-medium">{habit.name}</h3>
                     <span className={`text-xs ${getCategoryColor(habit.category)}`}>
@@ -142,20 +132,20 @@ const HabitTracker: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id={`habit-${habit.id}`}
-                    checked={habit.completed}
-                    onCheckedChange={() => handleToggleCompletion(habit.id, habit.completed)}
-                    className="mr-1"
-                  />
                   <button 
-                    onClick={() => openEditHabitDialog(habit)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditHabitDialog(habit);
+                    }}
                     className="p-1.5 rounded-full text-muted-foreground hover:bg-muted transition-colors"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button 
-                    onClick={() => handleDeleteHabit(habit.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteHabit(habit.id);
+                    }}
                     className="p-1.5 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                   >
                     <X className="h-4 w-4" />

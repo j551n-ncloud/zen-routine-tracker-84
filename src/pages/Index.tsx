@@ -8,8 +8,8 @@ const Index: React.FC = () => {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <DashboardView />
         <WeatherWidget />
+        <DashboardView />
       </div>
     </AppLayout>
   );

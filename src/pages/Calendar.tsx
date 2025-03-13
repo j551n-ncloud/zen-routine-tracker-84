@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, ClipboardList } from "lucide-react";
+import { CheckCircle2, ClipboardList, Edit } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -50,6 +51,21 @@ const CalendarPage = () => {
   const [priorities, setPriorities] = useLocalStorage("top-3-priorities", []);
   const [currentEnergyLevel, setCurrentEnergyLevel] = useLocalStorage("current-energy-level", 5);
   const [plannedBreaks, setPlannedBreaks] = useLocalStorage("planned-breaks", []);
+
+  // Check if it's a new day and reset values if needed
+  useEffect(() => {
+    const today = new Date();
+    const todayStr = formatDate(today);
+    const lastVisitDate = localStorage.getItem("last-visit-date");
+    
+    if (lastVisitDate !== todayStr) {
+      // It's a new day, reset focus and priorities for today
+      setFocusForToday("");
+      setPriorities([]);
+      setPlannedBreaks([]);
+      localStorage.setItem("last-visit-date", todayStr);
+    }
+  }, []);
 
   useEffect(() => {
     const today = new Date();
@@ -142,6 +158,13 @@ const CalendarPage = () => {
   const getDailyPriorities = () => {
     return dailyPriorities[formattedDate] || [];
   };
+
+  const handleEditBreaks = () => {
+    if (date && date.toDateString() === new Date().toDateString()) {
+      // Use the EditDialog to edit breaks for today
+      openEditDialog();
+    }
+  };
   
   return (
     <AppLayout>
@@ -230,10 +253,14 @@ const CalendarPage = () => {
             </Card>
             
             <Card className="shadow-subtle">
-              <CardHeader>
-                <CardTitle className="text-sm">
-                  Energy & Breaks
-                </CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm">Energy & Breaks</CardTitle>
+                {date && date.toDateString() === new Date().toDateString() && (
+                  <Button variant="ghost" size="sm" onClick={handleEditBreaks}>
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 <EnergyView 

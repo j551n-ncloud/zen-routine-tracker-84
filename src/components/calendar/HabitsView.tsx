@@ -29,34 +29,16 @@ const HabitsView: React.FC<HabitsViewProps> = ({ habits, onToggleHabit }) => {
           {habits.map(habit => (
             <div 
               key={habit.id}
-              className="p-3 rounded-md bg-accent/50 flex items-center justify-between"
+              className={`p-3 rounded-md flex items-center justify-between cursor-pointer ${habit.completed ? "bg-green-100/50" : "bg-accent/50"}`}
+              onClick={() => handleToggleHabit(habit.id, habit.completed)}
             >
               <span className="text-sm">{habit.name}</span>
-              <div className="flex items-center space-x-2">
-                {habit.completed ? (
-                  <span className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded-full flex items-center">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Done
-                  </span>
-                ) : (
-                  <span className="text-xs px-2 py-1 bg-red-100 text-red-600 rounded-full flex items-center">
-                    <X className="h-3 w-3 mr-1" />
-                    Missed
-                  </span>
-                )}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleToggleHabit(habit.id, habit.completed)}
-                  className="h-6 px-2 ml-2"
-                >
-                  {habit.completed ? 
-                    <X className="h-3 w-3 mr-1" /> : 
-                    <CheckSquare className="h-3 w-3 mr-1" />
-                  }
-                  {habit.completed ? 'Undo' : 'Complete'}
-                </Button>
-              </div>
+              {habit.completed && (
+                <span className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded-full flex items-center">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Done
+                </span>
+              )}
             </div>
           ))}
         </div>

@@ -13,6 +13,7 @@ import CalendarPage from "./pages/Calendar";
 import Insights from "./pages/Insights";
 import Achievements from "./pages/Achievements";
 import Settings from "./pages/Settings";
+import DailyRoutine from "./pages/DailyRoutine";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/insights" element={<Insights />} />
             <Route path="/achievements" element={<Achievements />} />
+            <Route path="/daily-routine" element={<DailyRoutine />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
