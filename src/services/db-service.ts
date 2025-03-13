@@ -19,43 +19,12 @@ export const initDatabase = async (): Promise<void> => {
   
   initPromise = new Promise(async (resolve, reject) => {
     try {
-      // Initialize SQL.js with explicit path to wasm file
+      // Initialize SQL.js
       console.log("Initializing SQL.js");
-      
-      // Try multiple CDN sources in case one fails
-      let wasmUrls = [
-        // Option 1: jsdelivr CDN
-        file => `https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/${file}`,
-        // Option 2: cdnjs
-        file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`,
-        // Option 3: Direct URL
-        file => `https://sql.js.org/dist/${file}`,
-        // Option 4: Unpkg
-        file => `https://unpkg.com/sql.js@1.8.0/dist/${file}`,
-        // Option 5: Relative path (for local development)
-        file => `/${file}`
-      ];
-      
-      // Try each WASM source until one works
-      let error = null;
-      for (const locateFileFn of wasmUrls) {
-        try {
-          SQL = await initSqlJs({
-            locateFile: locateFileFn
-          });
-          console.log("SQL.js initialized successfully");
-          break; // Break the loop if initialization succeeds
-        } catch (e) {
-          console.warn(`Failed to load SQL.js WASM from source: ${locateFileFn('sql-wasm.wasm')}`, e);
-          error = e;
-          // Continue to the next source
-        }
-      }
-      
-      // If SQL is still null after trying all sources, throw the last error
-      if (!SQL) {
-        throw error || new Error("Failed to initialize SQL.js from all sources");
-      }
+      SQL = await initSqlJs({
+        // Locate the wasm file
+        locateFile: file => `https://sql.js.org/dist/${file}`
+      });
       
       // Load existing database from localStorage or create a new one
       const savedDbData = localStorage.getItem('zentracker-db');

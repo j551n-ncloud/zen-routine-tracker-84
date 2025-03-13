@@ -18,39 +18,19 @@ import Settings from "./pages/Settings";
 import DailyRoutine from "./pages/DailyRoutine";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import { useDbInit } from './hooks/use-db-init';
-import { Loader2, RefreshCw } from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import { Loader2 } from 'lucide-react';
 
 const queryClient = new QueryClient();
 
 function App() {
-  const { isInitialized, error, initAttempts } = useDbInit();
+  const { isInitialized, error } = useDbInit();
   
   if (!isInitialized) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
-        <div className="text-center space-y-4 max-w-md mx-auto p-6 border border-border rounded-lg shadow-md">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-xl font-semibold">Initializing database...</p>
-          <p className="text-muted-foreground">This might take a moment...</p>
-          
-          {initAttempts > 0 && (
-            <div className="mt-4 text-amber-600 dark:text-amber-400">
-              <p>Initialization attempt {initAttempts + 1}...</p>
-            </div>
-          )}
-          
-          {initAttempts >= 2 && (
-            <div className="p-4 bg-muted rounded-md text-sm">
-              <p className="font-medium mb-2">Troubleshooting tips:</p>
-              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                <li>Make sure your internet connection is stable</li>
-                <li>Try using a different browser</li>
-                <li>Clear your browser cache and cookies</li>
-                <li>Disable any browser extensions that might interfere</li>
-              </ul>
-            </div>
-          )}
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Initializing database...</p>
         </div>
       </div>
     );
@@ -59,20 +39,14 @@ function App() {
   if (error) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
-        <div className="text-center space-y-4 max-w-md mx-auto p-6 border border-destructive/50 rounded-lg shadow-md">
-          <div className="bg-destructive/10 text-destructive p-4 rounded-md mb-4">
-            <p className="font-semibold text-lg mb-2">Failed to initialize database</p>
+        <div className="text-center">
+          <div className="bg-red-100 text-red-800 p-4 rounded-md mb-4">
+            <p className="font-semibold">Error initializing database</p>
             <p className="text-sm">{error.message}</p>
           </div>
           <p className="text-muted-foreground">
-            Please try refreshing the page or use a different browser.
+            Please refresh the page to try again.
           </p>
-          <Button 
-            onClick={() => window.location.reload()}
-            className="mt-4"
-          >
-            <RefreshCw className="mr-2 h-4 w-4" /> Refresh Page
-          </Button>
         </div>
       </div>
     );

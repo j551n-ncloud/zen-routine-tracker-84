@@ -42,14 +42,4 @@ export default defineConfig(({ mode }) => ({
       }
     }
   },
-  optimizeDeps: {
-    exclude: ['sql.js'], // Exclude sql.js from optimization
-  },
-  define: {
-    // Polyfill for missing Node.js globals in the browser
-    global: {},
-    process: {
-      env: {}
-    }
-  }
 }));
