@@ -4,41 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Calendar } from "@/components/ui/calendar";
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, ClipboardList, Battery, Coffee, X as XIcon } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { CheckCircle2, ClipboardList } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
-// Sample data structure for new users
-const sampleData = {
-  "2023-07-15": {
-    tasks: [
-      { id: 1, title: "Team meeting", completed: true },
-      { id: 2, title: "Send weekly report", completed: false }
-    ],
-    habits: [
-      { id: 1, name: "Exercise", completed: true },
-      { id: 2, name: "Read", completed: true },
-      { id: 3, name: "Meditate", completed: false }
-    ],
-    energy: 8,
-    breaks: ["11:30 AM", "3:30 PM"]
-  },
-  "2023-07-16": {
-    tasks: [
-      { id: 3, title: "Client call", completed: true }
-    ],
-    habits: [
-      { id: 1, name: "Exercise", completed: false },
-      { id: 2, name: "Read", completed: true }
-    ],
-    energy: 6,
-    breaks: ["1:00 PM"]
-  }
-};
+// Import our new components
+import TasksView from "@/components/calendar/TasksView";
+import HabitsView from "@/components/calendar/HabitsView";
+import EnergyView from "@/components/calendar/EnergyView";
+import EditDialog from "@/components/calendar/EditDialog";
+import { formatDate, getSelectedDateData } from "@/components/calendar/calendarUtils";
 
 const CalendarPage = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -48,53 +24,21 @@ const CalendarPage = () => {
   const [breaks, setBreaks] = useState<string[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [habits, setHabits] = useState<any[]>([]);
-  const [newTask, setNewTask] = useState("");
-  const [newHabit, setNewHabit] = useState("");
   
   const [savedEnergyLevels, setSavedEnergyLevels] = useLocalStorage("energy-levels", {});
   const [savedBreaks, setSavedBreaks] = useLocalStorage("breaks", {});
   const [savedTasks, setSavedTasks] = useLocalStorage("tasks", {});
   const [savedHabits, setSavedHabits] = useLocalStorage("habits", {});
   
-  const formattedDate = date ? 
-    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : 
-    "";
+  const formattedDate = formatDate(date);
   
-  const getSelectedDateData = () => {
-    // Start with an empty data structure
-    const data = {
-      tasks: [],
-      habits: [],
-      energy: 0,
-      breaks: []
-    };
-    
-    // If we have sample data for this date, use it as a starting point
-    if (sampleData[formattedDate]) {
-      Object.assign(data, sampleData[formattedDate]);
-    }
-    
-    // Override with any saved data
-    if (savedTasks[formattedDate]) {
-      data.tasks = savedTasks[formattedDate];
-    }
-    
-    if (savedHabits[formattedDate]) {
-      data.habits = savedHabits[formattedDate];
-    }
-    
-    if (savedEnergyLevels[formattedDate] !== undefined) {
-      data.energy = savedEnergyLevels[formattedDate];
-    }
-    
-    if (savedBreaks[formattedDate]) {
-      data.breaks = savedBreaks[formattedDate];
-    }
-    
-    return data;
-  };
-  
-  const selectedDateData = getSelectedDateData();
+  const selectedDateData = getSelectedDateData(
+    date,
+    savedTasks,
+    savedHabits,
+    savedEnergyLevels,
+    savedBreaks
+  );
 
   const openEditDialog = () => {
     setEnergyLevel(selectedDateData.energy);
@@ -128,58 +72,6 @@ const CalendarPage = () => {
     setIsEditDialogOpen(false);
     toast.success("Calendar data updated successfully");
   };
-
-  const addBreak = () => {
-    if (newBreak) {
-      setBreaks([...breaks, newBreak]);
-      setNewBreak("");
-    }
-  };
-
-  const removeBreak = (index: number) => {
-    const updatedBreaks = breaks.filter((_, i) => i !== index);
-    setBreaks(updatedBreaks);
-  };
-
-  const toggleTaskCompletion = (taskId: number) => {
-    const updatedTasks = tasks.map(task => 
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    );
-    setTasks(updatedTasks);
-  };
-
-  const toggleHabitCompletion = (habitId: number) => {
-    const updatedHabits = habits.map(habit => 
-      habit.id === habitId ? { ...habit, completed: !habit.completed } : habit
-    );
-    setHabits(updatedHabits);
-  };
-  
-  const addNewTask = () => {
-    if (newTask.trim()) {
-      const newTaskObj = {
-        id: Date.now(), // Use timestamp as a simple unique ID
-        title: newTask,
-        completed: false
-      };
-      setTasks([...tasks, newTaskObj]);
-      setNewTask("");
-    }
-  };
-  
-  const addNewHabit = () => {
-    if (newHabit.trim()) {
-      const newHabitObj = {
-        id: Date.now(), // Use timestamp as a simple unique ID
-        name: newHabit,
-        completed: false
-      };
-      setHabits([...habits, newHabitObj]);
-      setNewHabit("");
-    }
-  };
-  
-  const [newBreak, setNewBreak] = useState("");
   
   return (
     <AppLayout>
@@ -231,59 +123,11 @@ const CalendarPage = () => {
                   </TabsList>
                   
                   <TabsContent value="tasks" className="mt-0">
-                    {selectedDateData.tasks && selectedDateData.tasks.length > 0 ? (
-                      <div className="space-y-2">
-                        {selectedDateData.tasks.map(task => (
-                          <div 
-                            key={task.id}
-                            className="p-3 rounded-md bg-accent/50 flex items-center justify-between"
-                          >
-                            <span className="text-sm">{task.title}</span>
-                            {task.completed ? (
-                              <span className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded-full">
-                                Completed
-                              </span>
-                            ) : (
-                              <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-600 rounded-full">
-                                Pending
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-6 text-muted-foreground">
-                        <p>No tasks for this date</p>
-                      </div>
-                    )}
+                    <TasksView tasks={selectedDateData.tasks} />
                   </TabsContent>
                   
                   <TabsContent value="habits" className="mt-0">
-                    {selectedDateData.habits && selectedDateData.habits.length > 0 ? (
-                      <div className="space-y-2">
-                        {selectedDateData.habits.map(habit => (
-                          <div 
-                            key={habit.id}
-                            className="p-3 rounded-md bg-accent/50 flex items-center justify-between"
-                          >
-                            <span className="text-sm">{habit.name}</span>
-                            {habit.completed ? (
-                              <span className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded-full">
-                                Done
-                              </span>
-                            ) : (
-                              <span className="text-xs px-2 py-1 bg-red-100 text-red-600 rounded-full">
-                                Missed
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-6 text-muted-foreground">
-                        <p>No habits for this date</p>
-                      </div>
-                    )}
+                    <HabitsView habits={selectedDateData.habits} />
                   </TabsContent>
                 </Tabs>
               </CardContent>
@@ -291,193 +135,34 @@ const CalendarPage = () => {
             
             <Card className="shadow-subtle">
               <CardHeader>
-                <CardTitle className="text-sm flex items-center">
-                  <Battery className="h-4 w-4 mr-2" />
+                <CardTitle className="text-sm">
                   Energy & Breaks
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Energy Level</span>
-                    <span className="text-sm">{selectedDateData.energy}/10</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded overflow-hidden">
-                    <div 
-                      className="h-full bg-primary" 
-                      style={{ width: `${(selectedDateData.energy/10) * 100}%` }}
-                    />
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                <div>
-                  <div className="flex items-center mb-2">
-                    <Coffee className="h-4 w-4 mr-2" />
-                    <span className="text-sm font-medium">Break Times</span>
-                  </div>
-                  
-                  {selectedDateData.breaks && selectedDateData.breaks.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      {selectedDateData.breaks.map((breakTime, index) => (
-                        <div 
-                          key={index}
-                          className="rounded-md bg-accent/50 px-3 py-2 text-sm text-center"
-                        >
-                          {breakTime}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-2 text-muted-foreground">
-                      <p className="text-sm">No breaks scheduled</p>
-                    </div>
-                  )}
-                </div>
+                <EnergyView 
+                  energyLevel={selectedDateData.energy}
+                  breaks={selectedDateData.breaks}
+                />
               </CardContent>
             </Card>
           </div>
         </div>
 
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Edit Day</DialogTitle>
-              <DialogDescription>
-                Update information for {date?.toLocaleDateString()}
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Energy Level (0-10)</h4>
-                <input
-                  type="range"
-                  min="0"
-                  max="10"
-                  value={energyLevel}
-                  onChange={(e) => setEnergyLevel(parseInt(e.target.value))}
-                  className="w-full"
-                />
-                <div className="text-right text-sm">{energyLevel}/10</div>
-              </div>
-              
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Break Times</h4>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newBreak}
-                    onChange={(e) => setNewBreak(e.target.value)}
-                    placeholder="e.g. 10:30 AM"
-                    className="flex-1 px-3 py-2 border rounded-md text-sm"
-                  />
-                  <Button onClick={addBreak} size="sm">Add</Button>
-                </div>
-                
-                {breaks.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    {breaks.map((breakTime, index) => (
-                      <div key={index} className="flex items-center justify-between bg-accent/50 px-3 py-2 rounded-md">
-                        <span className="text-sm">{breakTime}</span>
-                        <button
-                          onClick={() => removeBreak(index)}
-                          className="text-muted-foreground hover:text-destructive transition-colors"
-                        >
-                          <XIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-2 text-muted-foreground">
-                    <p className="text-sm">No breaks added</p>
-                  </div>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Tasks</h4>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newTask}
-                    onChange={(e) => setNewTask(e.target.value)}
-                    placeholder="Add a new task"
-                    className="flex-1 px-3 py-2 border rounded-md text-sm"
-                  />
-                  <Button onClick={addNewTask} size="sm">Add</Button>
-                </div>
-                {tasks.length > 0 ? (
-                  <div className="space-y-2 mt-2">
-                    {tasks.map(task => (
-                      <div key={task.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`task-${task.id}`}
-                          checked={task.completed}
-                          onCheckedChange={() => toggleTaskCompletion(task.id)}
-                        />
-                        <label
-                          htmlFor={`task-${task.id}`}
-                          className={`text-sm ${task.completed ? 'line-through text-muted-foreground' : ''}`}
-                        >
-                          {task.title}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-2 text-muted-foreground">
-                    <p className="text-sm">No tasks for this date</p>
-                  </div>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Habits</h4>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newHabit}
-                    onChange={(e) => setNewHabit(e.target.value)}
-                    placeholder="Add a new habit"
-                    className="flex-1 px-3 py-2 border rounded-md text-sm"
-                  />
-                  <Button onClick={addNewHabit} size="sm">Add</Button>
-                </div>
-                {habits.length > 0 ? (
-                  <div className="space-y-2 mt-2">
-                    {habits.map(habit => (
-                      <div key={habit.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`habit-${habit.id}`}
-                          checked={habit.completed}
-                          onCheckedChange={() => toggleHabitCompletion(habit.id)}
-                        />
-                        <label
-                          htmlFor={`habit-${habit.id}`}
-                          className={`text-sm ${habit.completed ? 'line-through text-muted-foreground' : ''}`}
-                        >
-                          {habit.name}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-2 text-muted-foreground">
-                    <p className="text-sm">No habits for this date</p>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-              <Button onClick={saveChanges}>Save changes</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <EditDialog
+          isOpen={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          date={date}
+          energyLevel={energyLevel}
+          setEnergyLevel={setEnergyLevel}
+          breaks={breaks}
+          setBreaks={setBreaks}
+          tasks={tasks}
+          setTasks={setTasks}
+          habits={habits}
+          setHabits={setHabits}
+          onSave={saveChanges}
+        />
       </div>
     </AppLayout>
   );
