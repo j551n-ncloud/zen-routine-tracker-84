@@ -19,6 +19,12 @@ interface MonthlyViewProps {
   className?: string;
 }
 
+// Define props for our custom day component that matches what the Calendar expects
+interface CalendarDayProps {
+  date: Date;
+  selected?: boolean;
+}
+
 const MonthlyView: React.FC<MonthlyViewProps> = ({ className }) => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   
@@ -81,7 +87,7 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ className }) => {
             day_today: "bg-accent text-accent-foreground",
           }}
           components={{
-            Day: ({ date, selected }) => customDayRender(date, selected || false),
+            Day: ({ date, selected }: CalendarDayProps) => customDayRender(date, selected || false),
           }}
         />
       </CardContent>
