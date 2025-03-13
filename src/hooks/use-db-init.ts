@@ -19,21 +19,6 @@ export function useDbInit() {
     // Check if mock mode is enabled in localStorage
     const storedMockMode = localStorage.getItem('zentracker-mock-mode') === 'true';
     
-    if (isBrowser) {
-      console.log('Browser environment detected, enabling mock mode');
-      
-      // Always use mock mode in browser environments
-      setMockMode(true);
-      
-      if (isMounted) {
-        setIsInitialized(true);
-        setIsLoading(false);
-        setError(null);
-      }
-      return;
-    }
-    
-    // Use mock mode if explicitly set in localStorage
     if (storedMockMode) {
       console.log('Mock mode enabled from localStorage');
       setMockMode(true);
@@ -49,10 +34,21 @@ export function useDbInit() {
     const init = async () => {
       try {
         setIsLoading(true);
+        console.log('Initializing database connection...');
         const success = await initDatabase();
         
         if (isMounted) {
           setIsInitialized(success);
+          if (success) {
+            console.log('Database initialized successfully');
+            if (isMockMode()) {
+              toast.warning("SQLite REST API not available. Using mock mode.", {
+                description: "Data will be stored locally in your browser."
+              });
+            } else {
+              toast.success("Connected to SQLite REST API successfully");
+            }
+          }
           setError(null);
         }
       } catch (err) {
@@ -60,18 +56,6 @@ export function useDbInit() {
         
         if (isMounted) {
           setError(err instanceof Error ? err : new Error(String(err)));
-          
-          // If we're in a browser, always use mock mode
-          if (isBrowser) {
-            console.log('Browser environment detected, enabling mock mode');
-            setMockMode(true);
-            localStorage.setItem('zentracker-mock-mode', 'true');
-            toast.info("Using local storage for data in browser environment.");
-            setIsInitialized(true);
-            setError(null);
-            setIsLoading(false);
-            return;
-          }
           
           // Auto-enable mock mode after all retries fail
           if (retryCount >= MAX_RETRIES) {

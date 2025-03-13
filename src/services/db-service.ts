@@ -44,11 +44,14 @@ export function setMockMode(value: boolean): void {
 // SQLite REST query execution
 async function sqliteRestQuery<T>(sql: string, params: any[] = []): Promise<T> {
   try {
+    console.log('Executing SQLite REST query:', { sql, params, url: SQLITE_REST_BASE_URL });
     const response = await axios.post(`${SQLITE_REST_BASE_URL}/exec`, {
       sql,
       params,
       db: SQLITE_DATABASE
     });
+    
+    console.log('SQLite REST response:', response.data);
     
     // SQLite REST returns results in a specific format
     if (response.data && response.data.results && response.data.results.length > 0) {
@@ -139,20 +142,25 @@ const mockGetData = async (key: string): Promise<any> => {
 
 // Initialize the database - check if SQLite REST API is available
 export async function initDatabase(): Promise<boolean> {
-  // If we're in a browser, we always use mock mode
+  // Check for localStorage setting first
   if (isBrowser) {
-    console.log('Browser environment detected, using mock mode');
-    setMockMode(true);
-    return true;
+    const storedMockMode = localStorage.getItem('zentracker-mock-mode') === 'true';
+    if (storedMockMode) {
+      console.log('Mock mode enabled from localStorage settings');
+      setMockMode(true);
+      return true;
+    }
   }
   
-  // If mock mode is explicitly set, don't try to connect to the database
+  // Don't automatically use mock mode in browser anymore
+  // Only use mock mode if explicitly set
   if (mockMode) {
     console.log('Mock mode is enabled, skipping database connection');
     return true;
   }
   
   try {
+    console.log('Attempting to connect to SQLite REST API at:', SQLITE_REST_BASE_URL);
     // Test the SQLite REST API connection with a simple query
     await sqliteRestQuery('SELECT 1');
     console.log('Successfully connected to SQLite REST API');
@@ -163,8 +171,9 @@ export async function initDatabase(): Promise<boolean> {
     return true;
   } catch (error) {
     console.error('Failed to connect to SQLite REST API:', error);
+    toast.error('Failed to connect to database. Switching to mock mode.');
     setMockMode(true);
-    throw error;
+    return false;
   }
 }
 
@@ -243,7 +252,7 @@ export async function executeQuery<T>(
   params: any[] = []
 ): Promise<T> {
   // In mock mode, use mock implementation
-  if (mockMode || isBrowser) {
+  if (mockMode) {
     return mockExecuteQuery<T>(sql, params);
   }
   
@@ -261,7 +270,7 @@ export async function executeQuery<T>(
 // Store data in key-value format (using a key_value_store table in SQLite)
 export async function saveData(key: string, value: any): Promise<void> {
   // In mock mode, use mock implementation
-  if (mockMode || isBrowser) {
+  if (mockMode) {
     return mockSaveData(key, value);
   }
   
@@ -293,7 +302,7 @@ export async function saveData(key: string, value: any): Promise<void> {
 // Retrieve data from key-value store
 export async function getData(key: string): Promise<any> {
   // In mock mode, use mock implementation
-  if (mockMode || isBrowser) {
+  if (mockMode) {
     return mockGetData(key);
   }
   
