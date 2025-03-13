@@ -97,15 +97,23 @@ const handleDataPost = (req, res) => {
 
 // Handle all possible path formats
 
-// 1. /data/:key  
+// 1. /data/:key (original path format)
 app.get('/data/:key', handleDataGet);
 app.post('/data/:key', handleDataPost);
 
-// 2. /api/data/:key
+// 2. /api/data/:key (through Cloudflare tunnels - original)
 app.get('/api/data/:key', handleDataGet);
 app.post('/api/data/:key', handleDataPost);
 
-// 3. Handle root requests of /api to support Cloudflare tunnel configuration
+// 3. Direct key access without /data/ prefix (new format matching client code)
+app.get('/:key', handleDataGet);
+app.post('/:key', handleDataPost);
+
+// 4. /api/:key (through Cloudflare tunnels - new format)
+app.get('/api/:key', handleDataGet);
+app.post('/api/:key', handleDataPost);
+
+// 5. Handle root requests of /api to support Cloudflare tunnel configuration
 app.get('/api', (req, res) => {
   res.json({ status: 'ok', message: 'API is running' });
 });
@@ -123,7 +131,7 @@ app.use('*', (req, res) => {
   console.log(`404 Not Found: ${req.originalUrl}`);
   res.status(404).json({ 
     error: 'Not found',
-    message: 'Valid endpoints are /data/:key, /api/data/:key',
+    message: 'Valid endpoints are /:key, /data/:key, /api/:key, /api/data/:key',
     method: req.method,
     url: req.originalUrl,
     normalizedUrl: req.url
