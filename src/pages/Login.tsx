@@ -73,11 +73,6 @@ const Login: React.FC = () => {
                 required
               />
             </div>
-            <div className="text-sm text-muted-foreground">
-              <p>Default login:</p>
-              <p>Username: admin</p>
-              <p>Password: admin</p>
-            </div>
           </CardContent>
           <CardFooter>
             <Button className="w-full" type="submit" disabled={loggingIn}>
