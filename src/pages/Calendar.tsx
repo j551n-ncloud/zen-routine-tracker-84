@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -11,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
+// Sample data structure for new users
 const sampleData = {
   "2023-07-15": {
     tasks: [
@@ -44,9 +46,10 @@ const CalendarPage = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [energyLevel, setEnergyLevel] = useState(0);
   const [breaks, setBreaks] = useState<string[]>([]);
-  const [newBreak, setNewBreak] = useState("");
   const [tasks, setTasks] = useState<any[]>([]);
   const [habits, setHabits] = useState<any[]>([]);
+  const [newTask, setNewTask] = useState("");
+  const [newHabit, setNewHabit] = useState("");
   
   const [savedEnergyLevels, setSavedEnergyLevels] = useLocalStorage("energy-levels", {});
   const [savedBreaks, setSavedBreaks] = useLocalStorage("breaks", {});
@@ -58,16 +61,37 @@ const CalendarPage = () => {
     "";
   
   const getSelectedDateData = () => {
+    // Start with an empty data structure
+    const data = {
+      tasks: [],
+      habits: [],
+      energy: 0,
+      breaks: []
+    };
+    
+    // If we have sample data for this date, use it as a starting point
     if (sampleData[formattedDate]) {
-      return sampleData[formattedDate];
+      Object.assign(data, sampleData[formattedDate]);
     }
     
-    return {
-      tasks: savedTasks[formattedDate] || [],
-      habits: savedHabits[formattedDate] || [],
-      energy: savedEnergyLevels[formattedDate] || 0,
-      breaks: savedBreaks[formattedDate] || []
-    };
+    // Override with any saved data
+    if (savedTasks[formattedDate]) {
+      data.tasks = savedTasks[formattedDate];
+    }
+    
+    if (savedHabits[formattedDate]) {
+      data.habits = savedHabits[formattedDate];
+    }
+    
+    if (savedEnergyLevels[formattedDate] !== undefined) {
+      data.energy = savedEnergyLevels[formattedDate];
+    }
+    
+    if (savedBreaks[formattedDate]) {
+      data.breaks = savedBreaks[formattedDate];
+    }
+    
+    return data;
   };
   
   const selectedDateData = getSelectedDateData();
@@ -81,18 +105,22 @@ const CalendarPage = () => {
   };
 
   const saveChanges = () => {
+    // Update energy levels
     const updatedEnergyLevels = { ...savedEnergyLevels };
     updatedEnergyLevels[formattedDate] = energyLevel;
     setSavedEnergyLevels(updatedEnergyLevels);
 
+    // Update breaks
     const updatedBreaks = { ...savedBreaks };
     updatedBreaks[formattedDate] = breaks;
     setSavedBreaks(updatedBreaks);
 
+    // Update tasks
     const updatedTasks = { ...savedTasks };
     updatedTasks[formattedDate] = tasks;
     setSavedTasks(updatedTasks);
 
+    // Update habits
     const updatedHabits = { ...savedHabits };
     updatedHabits[formattedDate] = habits;
     setSavedHabits(updatedHabits);
@@ -126,6 +154,32 @@ const CalendarPage = () => {
     );
     setHabits(updatedHabits);
   };
+  
+  const addNewTask = () => {
+    if (newTask.trim()) {
+      const newTaskObj = {
+        id: Date.now(), // Use timestamp as a simple unique ID
+        title: newTask,
+        completed: false
+      };
+      setTasks([...tasks, newTaskObj]);
+      setNewTask("");
+    }
+  };
+  
+  const addNewHabit = () => {
+    if (newHabit.trim()) {
+      const newHabitObj = {
+        id: Date.now(), // Use timestamp as a simple unique ID
+        name: newHabit,
+        completed: false
+      };
+      setHabits([...habits, newHabitObj]);
+      setNewHabit("");
+    }
+  };
+  
+  const [newBreak, setNewBreak] = useState("");
   
   return (
     <AppLayout>
@@ -345,8 +399,18 @@ const CalendarPage = () => {
               
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Tasks</h4>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTask}
+                    onChange={(e) => setNewTask(e.target.value)}
+                    placeholder="Add a new task"
+                    className="flex-1 px-3 py-2 border rounded-md text-sm"
+                  />
+                  <Button onClick={addNewTask} size="sm">Add</Button>
+                </div>
                 {tasks.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 mt-2">
                     {tasks.map(task => (
                       <div key={task.id} className="flex items-center space-x-2">
                         <Checkbox
@@ -372,8 +436,18 @@ const CalendarPage = () => {
               
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Habits</h4>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newHabit}
+                    onChange={(e) => setNewHabit(e.target.value)}
+                    placeholder="Add a new habit"
+                    className="flex-1 px-3 py-2 border rounded-md text-sm"
+                  />
+                  <Button onClick={addNewHabit} size="sm">Add</Button>
+                </div>
                 {habits.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 mt-2">
                     {habits.map(habit => (
                       <div key={habit.id} className="flex items-center space-x-2">
                         <Checkbox
