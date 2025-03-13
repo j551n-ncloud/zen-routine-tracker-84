@@ -205,11 +205,11 @@ const Insights = () => {
     
     const habitCategoryData = Object.entries(habitCategoryMap).map(([name, value]) => ({ name, value }));
     
-    // Get streak data - use real-time data
-    const streakData = habitsData
-      .sort((a, b) => b.streak - a.streak)
-      .slice(0, 5)
-      .map(habit => ({ name: habit.name, streak: habit.streak }));
+    // Get streak data - use ALL habits instead of limiting to top 5
+    const streakData = habitsData.map(habit => ({ 
+      name: habit.name, 
+      streak: habit.streak 
+    }));
     
     return { habitData, taskData, energyData, habitCategoryData, streakData };
   }, [selectedPeriod, habitsData, tasksData, calendarTasks, calendarHabits, energyLevels, refresh]);
@@ -359,11 +359,11 @@ const Insights = () => {
                   <CardDescription>Current streak length for each habit</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={generateChartData.streakData} layout="vertical">
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart data={generateChartData.streakData} layout="vertical" margin={{ right: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis type="number" />
-                      <YAxis dataKey="name" type="category" width={100} />
+                      <YAxis dataKey="name" type="category" width={120} />
                       <Tooltip content={<CustomTooltip />} />
                       <Bar dataKey="streak" fill={isDarkMode ? "#60A5FA" : "#3b82f6"} name="Current Streak" />
                     </BarChart>
