@@ -12,7 +12,7 @@ deploy:
         cd /home/gitlab-runner/lovable-app && git pull origin main
       fi
     - cd /home/gitlab-runner/lovable-app
-    - docker compose stop frontend backend || true  # Stop the services if running
+    - docker compose stop nginx frontend backend || true  # Stop the services if running
     - docker compose up --build -d
   only:
     - main

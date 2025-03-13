@@ -42,7 +42,7 @@ npm run dev
 You can also run this project using Docker and Docker Compose:
 
 ```sh
-# Build and start both frontend and backend services
+# Build and start all services (Nginx, frontend, and backend)
 docker-compose up
 
 # Or run in detached mode
@@ -52,7 +52,7 @@ docker-compose up -d
 docker-compose down
 ```
 
-The frontend will be available at http://localhost:8080 and the backend API at http://localhost:3001.
+The application will be available at http://localhost, with Nginx proxying requests to the frontend and backend services.
 
 **Edit a file directly in GitHub**
 
@@ -78,6 +78,7 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 - Express (Backend API)
+- Nginx (Reverse Proxy)
 - Docker & Docker Compose
 
 ## How can I deploy this project?
