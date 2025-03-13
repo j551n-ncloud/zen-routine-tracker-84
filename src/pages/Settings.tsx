@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,12 +70,12 @@ const Settings = () => {
     setIsUpdatingUser(true);
     try {
       // Verify current password
-      const users = await executeQuery<{ count: number }>(
+      const users = await executeQuery(
         "SELECT COUNT(*) as count FROM users WHERE username = ? AND password = ?",
         [user?.username, values.currentPassword]
       );
       
-      if (users[0].count === 0) {
+      if (!Array.isArray(users) || users.length === 0 || users[0].count === 0) {
         toast.error("Current password is incorrect");
         setIsUpdatingUser(false);
         return;

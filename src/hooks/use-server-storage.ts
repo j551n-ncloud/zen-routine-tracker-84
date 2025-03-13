@@ -17,11 +17,11 @@ export function useServerStorage<T>(key: string, initialValue: T) {
         console.log(`Fetching data from database for key: ${key}`);
         
         // Fetch from database using our helper
-        const data = await getData<T>(key);
+        const data = await getData(key);
         
         if (data) {
           console.log(`Successfully fetched data for key: ${key}`);
-          setStoredValue(data);
+          setStoredValue(data as T);
         } else {
           console.log(`No data found for key: ${key}, using initial value`);
           // If no data in database, use initial value

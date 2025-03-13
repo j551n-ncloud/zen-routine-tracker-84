@@ -95,7 +95,7 @@ export async function getData(key) {
       [key]
     );
     
-    if (rows.length > 0 && rows[0].value_data) {
+    if (rows && Array.isArray(rows) && rows.length > 0 && rows[0].value_data) {
       return JSON.parse(rows[0].value_data);
     }
     return null;

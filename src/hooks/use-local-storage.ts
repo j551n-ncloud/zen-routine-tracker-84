@@ -15,10 +15,10 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
         console.log(`Loading data for key: ${key}`);
         
         // Try to get from SQLite using our helper
-        const data = await getData<T>(key);
+        const data = await getData(key);
         
         if (data) {
-          setStoredValue(data);
+          setStoredValue(data as T);
           console.log(`Successfully loaded ${key} from database`);
         } else {
           console.log(`No data found in database for key: ${key}, using initial value`);

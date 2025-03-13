@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(true);
         
         // Try to get user from database
-        const savedUser = await getData<User>("auth-user");
+        const savedUser = await getData("auth-user");
         if (savedUser) {
           setUser(savedUser);
           console.log("User loaded from storage:", savedUser.username);
@@ -51,12 +51,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       // Validate credentials
-      const users = await executeQuery<{ username: string; is_admin: number }>(
+      const users = await executeQuery(
         "SELECT username, is_admin FROM users WHERE username = ? AND password = ?",
         [username, password]
       );
       
-      if (users.length === 0) {
+      if (!Array.isArray(users) || users.length === 0) {
         toast.error("Invalid username or password");
         return false;
       }
