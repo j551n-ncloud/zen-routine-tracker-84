@@ -2,20 +2,10 @@
 version: '3.8'
 
 services:
-  nginx:
-    build:
-      context: .
-      dockerfile: Dockerfile.nginx
-    ports:
-      - "89:80"    # Normal frontend traffic
-      - "3001:81"  # API traffic
-    depends_on:
-      - frontend
-      - backend
-    restart: always
-
   frontend:
     build: .
+    ports:
+      - "89:8080"    # Map container port 8080 to host port 89
     volumes:
       - ./src:/app/src
       - ./public:/app/public
@@ -29,6 +19,8 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile.backend
+    ports:
+      - "3001:3001"  # Map container port 3001 to host port 3001
     volumes:
       - ./src/server:/app/src/server
       - ./data:/app/data

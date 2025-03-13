@@ -1,5 +1,4 @@
 
-
 # Welcome to your Lovable project
 
 ## Project info
@@ -43,7 +42,7 @@ npm run dev
 You can also run this project using Docker and Docker Compose:
 
 ```sh
-# Build and start all services (Nginx, frontend, and backend)
+# Build and start all services (frontend and backend)
 docker-compose up
 
 # Or run in detached mode
@@ -53,7 +52,7 @@ docker-compose up -d
 docker-compose down
 ```
 
-The application will be available at http://localhost:89, with Nginx proxying requests to the frontend and backend services.
+The application will be available at http://localhost:89, with the backend API available at http://localhost:3001.
 
 ## Deploying with Cloudflare Tunnels
 
@@ -61,9 +60,9 @@ This application consists of two main components that need to be properly routed
 1. Frontend (React application)
 2. Backend API (Express server)
 
-### Required Port Configuration for habits.j551n.com
+### Required Path Configuration for habits.j551n.com
 
-For your specific setup with habits.j551n.com and habits.j551n.com/api, you'll need:
+For your specific setup with habits.j551n.com and habits.j551n.com/api, you'll need to configure a Cloudflare Tunnel with the following routes:
 
 1. **Frontend (main domain)**:
    - Service: `http://localhost:89`
@@ -128,7 +127,7 @@ For your specific setup with habits.j551n.com and habits.j551n.com/api, you'll n
 
 ### Important Notes for Your Setup
 
-1. **Path Handling**: The server is configured to handle `/api/*` paths and will route them correctly to your backend.
+1. **Path Handling**: The frontend should make API requests using the `/api` path prefix (e.g., `https://habits.j551n.com/api/data/key`).
 
 2. **CORS Configuration**: Since both your frontend and API are on the same domain (just different paths), CORS issues should be minimal.
 
@@ -146,4 +145,3 @@ For your specific setup with habits.j551n.com and habits.j551n.com/api, you'll n
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
-

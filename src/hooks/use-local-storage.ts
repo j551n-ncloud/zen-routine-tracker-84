@@ -1,23 +1,18 @@
+
 import { useState, useEffect } from "react";
 
-// Base URL for API - adjusted for all access scenarios
+// Base URL for API - adjusted to use /api path prefix
 const API_BASE_URL = (() => {
   // For production environments
   if (process.env.NODE_ENV === 'production') {
-    // Use port 3001 for API calls
-    const origin = window.location.origin;
-    const apiOrigin = origin.replace(/:89$/, ':3001');
-    return apiOrigin;
+    return `${window.location.origin}/api`;
   }
   
   // For local development
   // Check if accessing from a mobile device on the same network
   const hostname = window.location.hostname;
   if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-    // When accessing from another device on the network
-    const origin = window.location.origin;
-    const apiOrigin = origin.replace(/:89$/, ':3001');
-    return apiOrigin;
+    return `${window.location.origin}/api`;
   }
   
   // Default for localhost
