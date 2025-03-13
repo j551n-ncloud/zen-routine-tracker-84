@@ -1,0 +1,21 @@
+
+FROM mariadb:10.11
+
+# Set MariaDB root password and create database
+ENV MYSQL_ROOT_PASSWORD=password
+ENV MYSQL_DATABASE=zentracker
+ENV MYSQL_USER=zentracker
+ENV MYSQL_PASSWORD=zentracker
+
+# Copy custom configuration if needed
+COPY mariadb-config/my.cnf /etc/mysql/conf.d/my.cnf
+
+# Copy initialization scripts
+COPY mariadb-config/init.sql /docker-entrypoint-initdb.d/
+
+# Expose the default MariaDB port
+EXPOSE 3306
+
+# MariaDB healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
+  CMD mysqladmin ping -h localhost -u$MYSQL_USER -p$MYSQL_PASSWORD || exit 1

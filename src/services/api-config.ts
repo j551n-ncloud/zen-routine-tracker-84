@@ -1,6 +1,6 @@
 
 // API configuration
-const apiBaseUrl = import.meta.env.VITE_SQLITE_API_URL || '/api';
+const apiBaseUrl = import.meta.env.VITE_MARIADB_API_URL || '/api';
 
 export default {
   baseUrl: apiBaseUrl,

@@ -19,12 +19,12 @@ services:
     environment:
       - NODE_ENV=production
       - VITE_BASE_URL=/
-      - VITE_SQLITE_API_URL=/api
+      - VITE_MARIADB_API_URL=/api
     restart: unless-stopped
     networks:
       - zentracker_network
     depends_on:
-      - sqlite
+      - mariadb-api
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
       interval: 30s
@@ -32,20 +32,49 @@ services:
       retries: 3
       start_period: 10s
 
-  sqlite:
+  mariadb:
     build:
       context: .
-      dockerfile: Dockerfile.sqlite
+      dockerfile: Dockerfile.mariadb
     volumes:
-      - sqlite_data:/db
-      - ./sqlite-api:/app
-    # Removed port mapping to make container only accessible via internal network
+      - mariadb_data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=zentracker
+      - MYSQL_USER=zentracker
+      - MYSQL_PASSWORD=zentracker
+    # No port exposure to keep it internal only
     networks:
       - zentracker_network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  mariadb-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.mariadb-api
+    volumes:
+      - ./mariadb-api:/app
+    # No port exposure to keep it internal only
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_USER=zentracker
+      - DB_PASSWORD=zentracker
+      - DB_NAME=zentracker
+    networks:
+      - zentracker_network
+    restart: unless-stopped
+    depends_on:
+      - mariadb
 
 networks:
   zentracker_network:
 
 volumes:
-  sqlite_data:
+  mariadb_data:

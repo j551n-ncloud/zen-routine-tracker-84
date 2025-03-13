@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import axios from "axios";
 import apiConfig from "./api-config";
@@ -26,9 +27,9 @@ export const initDatabase = async (): Promise<void> => {
   
   initPromise = new Promise(async (resolve, reject) => {
     try {
-      console.log('Initializing SQLite database connection');
+      console.log('Initializing MariaDB database connection');
       
-      // Test connection to SQLite container
+      // Test connection to MariaDB API
       const response = await axios.get(apiConfig.endpoints.status);
       
       if (response.status === 200) {
@@ -38,12 +39,9 @@ export const initDatabase = async (): Promise<void> => {
         const initTime = Math.round(performance.now() - initStartTime);
         console.log(`Database connection initialized successfully in ${initTime}ms`);
         
-        // Ensure tables exist
-        await createTables();
-        
         resolve();
       } else {
-        throw new Error(`Failed to connect to SQLite container: ${response.statusText}`);
+        throw new Error(`Failed to connect to MariaDB API: ${response.statusText}`);
       }
     } catch (error) {
       console.error("Failed to initialize database connection:", error);
@@ -55,88 +53,6 @@ export const initDatabase = async (): Promise<void> => {
   });
   
   return initPromise;
-};
-
-// Create the database tables
-const createTables = async () => {
-  // Initialize table creation performance metrics
-  const tableStartTime = performance.now();
-  
-  const tables = [
-    // Table for generic key-value pairs
-    `CREATE TABLE IF NOT EXISTS key_value_store (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );`,
-    
-    // Table for habits
-    `CREATE TABLE IF NOT EXISTS habits (
-      id INTEGER PRIMARY KEY,
-      name TEXT NOT NULL,
-      streak INTEGER DEFAULT 0,
-      completed BOOLEAN DEFAULT 0,
-      category TEXT,
-      icon TEXT
-    );`,
-    
-    // Table for daily habit status
-    `CREATE TABLE IF NOT EXISTS daily_habits (
-      date TEXT,
-      habit_id INTEGER,
-      completed BOOLEAN DEFAULT 0,
-      PRIMARY KEY (date, habit_id)
-    );`,
-    
-    // Table for tasks
-    `CREATE TABLE IF NOT EXISTS tasks (
-      id INTEGER PRIMARY KEY,
-      title TEXT NOT NULL,
-      priority TEXT CHECK(priority IN ('high', 'medium', 'low')),
-      completed BOOLEAN DEFAULT 0,
-      start_date TEXT,
-      due_date TEXT NOT NULL
-    );`,
-    
-    // Table for calendar data
-    `CREATE TABLE IF NOT EXISTS calendar_data (
-      date TEXT PRIMARY KEY,
-      data TEXT NOT NULL
-    );`,
-    
-    // Table for users
-    `CREATE TABLE IF NOT EXISTS users (
-      username TEXT PRIMARY KEY,
-      password TEXT NOT NULL,
-      is_admin BOOLEAN DEFAULT 0
-    );`
-  ];
-  
-  try {
-    // Execute each table creation query
-    for (const query of tables) {
-      await executeWrite(query);
-    }
-    
-    // Check if any users exist
-    const users = await executeQuery<{ count: number }>(
-      "SELECT COUNT(*) as count FROM users"
-    );
-    
-    // If no users exist, create a default admin user
-    if (users.length === 0 || users[0].count === 0) {
-      await executeWrite(
-        "INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)",
-        ["admin", "admin", 1]
-      );
-      console.log("Created default admin user");
-    }
-    
-    const tableTime = Math.round(performance.now() - tableStartTime);
-    console.log(`Database tables created or verified in ${tableTime}ms`);
-  } catch (error) {
-    console.error("Error creating tables:", error);
-    throw error;
-  }
 };
 
 // Create a query cache
@@ -163,7 +79,7 @@ export const executeQuery = async <T>(
     
     const startTime = performance.now();
     
-    // Send query to SQLite container
+    // Send query to MariaDB API
     const response = await axios.post(apiConfig.endpoints.query, {
       query,
       params
@@ -198,7 +114,7 @@ export const executeWrite = async (
   try {
     const startTime = performance.now();
     
-    // Send write operation to SQLite container
+    // Send write operation to MariaDB API
     await axios.post(apiConfig.endpoints.execute, {
       query,
       params
@@ -228,7 +144,7 @@ const ensureDatabaseInitialized = async (): Promise<void> => {
 export const getData = async <T>(key: string): Promise<T | null> => {
   try {
     const results = await executeQuery<{ value: string }>(
-      "SELECT value FROM key_value_store WHERE key = ?",
+      "SELECT value FROM key_value_store WHERE `key` = ?",
       [key],
       true // use cache
     );
@@ -251,20 +167,20 @@ export const saveData = async <T>(key: string, value: T): Promise<void> => {
     
     // Check if key exists
     const exists = await executeQuery<{ count: number }>(
-      "SELECT COUNT(*) as count FROM key_value_store WHERE key = ?",
+      "SELECT COUNT(*) as count FROM key_value_store WHERE `key` = ?",
       [key]
     );
     
     if (exists.length > 0 && exists[0].count > 0) {
       // Update existing record
       await executeWrite(
-        "UPDATE key_value_store SET value = ? WHERE key = ?",
+        "UPDATE key_value_store SET value = ? WHERE `key` = ?",
         [valueJson, key]
       );
     } else {
       // Insert new record
       await executeWrite(
-        "INSERT INTO key_value_store (key, value) VALUES (?, ?)",
+        "INSERT INTO key_value_store (`key`, value) VALUES (?, ?)",
         [key, valueJson]
       );
     }
