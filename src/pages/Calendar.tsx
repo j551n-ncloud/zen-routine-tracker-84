@@ -57,12 +57,20 @@ const CalendarPage = () => {
     `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : 
     "";
   
-  const selectedDateData = sampleData[formattedDate] || { 
-    tasks: savedTasks[formattedDate] || [], 
-    habits: savedHabits[formattedDate] || [],
-    energy: savedEnergyLevels[formattedDate] || 0,
-    breaks: savedBreaks[formattedDate] || []
+  const getSelectedDateData = () => {
+    if (sampleData[formattedDate]) {
+      return sampleData[formattedDate];
+    }
+    
+    return {
+      tasks: savedTasks[formattedDate] || [],
+      habits: savedHabits[formattedDate] || [],
+      energy: savedEnergyLevels[formattedDate] || 0,
+      breaks: savedBreaks[formattedDate] || []
+    };
   };
+  
+  const selectedDateData = getSelectedDateData();
 
   const openEditDialog = () => {
     setEnergyLevel(selectedDateData.energy);
