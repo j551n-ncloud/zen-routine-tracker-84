@@ -20,36 +20,6 @@ interface AuthContextType {
 // Create the auth context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Initialize database with a default admin user if none exists
-const initializeUserTable = async () => {
-  try {
-    // Create the users table if it doesn't exist
-    await executeQuery(`
-      CREATE TABLE IF NOT EXISTS users (
-        username TEXT PRIMARY KEY,
-        password TEXT NOT NULL,
-        is_admin BOOLEAN DEFAULT 0
-      );
-    `);
-    
-    // Check if any users exist
-    const users = await executeQuery<{ count: number }>(
-      "SELECT COUNT(*) as count FROM users"
-    );
-    
-    // If no users exist, create a default admin user
-    if (users[0].count === 0) {
-      await executeQuery(
-        "INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)",
-        ["admin", "admin", 1]
-      );
-      console.log("Created default admin user");
-    }
-  } catch (error) {
-    console.error("Failed to initialize users table:", error);
-  }
-};
-
 // Provider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -61,10 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         setIsLoading(true);
         
-        // Initialize user table with default admin if needed
-        await initializeUserTable();
-        
-        // Try to get user from SQLite
+        // Try to get user from database
         const savedUser = await getData<User>("auth-user");
         if (savedUser) {
           setUser(savedUser);
@@ -102,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(authenticatedUser);
       
-      // Save to SQLite for persistence
+      // Save to database for persistence
       await saveData("auth-user", authenticatedUser);
       
       toast.success(`Welcome back, ${authenticatedUser.username}!`);

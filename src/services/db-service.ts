@@ -1,102 +1,20 @@
 
-import initSqlJs, { SqlJsStatic, Database } from 'sql.js';
 import { toast } from "sonner";
 
-// We'll use a singleton pattern to ensure only one database connection exists
-let SQL: SqlJsStatic | null = null;
-let db: Database | null = null;
+// Base URL for the SQLite API
+const API_URL = import.meta.env.VITE_DATABASE_URL || 'http://localhost:3000';
+
+// Initialize flag
+let isInitialized = false;
 let isInitializing = false;
 let initPromise: Promise<void> | null = null;
 
-// IndexedDB database name and store constants
-const IDB_NAME = 'zentracker-db';
-const IDB_VERSION = 1;
-const IDB_STORE_NAME = 'sqlitedb';
-const IDB_KEY_NAME = 'db';
-
-// Function to open the IndexedDB database
-const openIndexedDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(IDB_NAME, IDB_VERSION);
-    
-    request.onerror = (event) => {
-      console.error('Failed to open IndexedDB:', event);
-      reject(new Error('Failed to open IndexedDB'));
-    };
-    
-    request.onsuccess = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      resolve(db);
-    };
-    
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(IDB_STORE_NAME)) {
-        db.createObjectStore(IDB_STORE_NAME);
-      }
-    };
-  });
-};
-
-// Function to load the database from IndexedDB
-const loadDbFromIndexedDB = async (): Promise<Uint8Array | null> => {
-  try {
-    const idb = await openIndexedDB();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = idb.transaction([IDB_STORE_NAME], 'readonly');
-      const store = transaction.objectStore(IDB_STORE_NAME);
-      const request = store.get(IDB_KEY_NAME);
-      
-      request.onerror = () => {
-        console.error('Error reading from IndexedDB');
-        reject(new Error('Error reading from IndexedDB'));
-      };
-      
-      request.onsuccess = () => {
-        const data = request.result;
-        if (data) {
-          resolve(new Uint8Array(data));
-        } else {
-          resolve(null);
-        }
-        idb.close();
-      };
-    });
-  } catch (error) {
-    console.error('Error accessing IndexedDB:', error);
-    return null;
-  }
-};
-
-// Function to save the database to IndexedDB
-const saveDbToIndexedDB = async (data: Uint8Array): Promise<void> => {
-  try {
-    const idb = await openIndexedDB();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = idb.transaction([IDB_STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(IDB_STORE_NAME);
-      const request = store.put(data, IDB_KEY_NAME);
-      
-      request.onerror = () => {
-        console.error('Error writing to IndexedDB');
-        reject(new Error('Error writing to IndexedDB'));
-      };
-      
-      request.onsuccess = () => {
-        resolve();
-        idb.close();
-      };
-    });
-  } catch (error) {
-    console.error('Error accessing IndexedDB for saving:', error);
-    throw error;
-  }
-};
-
 // Function to initialize the database
 export const initDatabase = async (): Promise<void> => {
+  if (isInitialized) {
+    return Promise.resolve();
+  }
+  
   if (isInitializing) {
     // If already initializing, return the existing promise
     return initPromise!;
@@ -106,41 +24,24 @@ export const initDatabase = async (): Promise<void> => {
   
   initPromise = new Promise(async (resolve, reject) => {
     try {
-      // Fixed approach for loading the WASM file
-      const wasmUrl = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.wasm';
+      console.log('Initializing database connection to SQLite API server');
       
-      console.log(`Initializing SQL.js with WASM from: ${wasmUrl}`);
-      SQL = await initSqlJs({
-        locateFile: () => wasmUrl
-      });
+      // Test connection to SQLite API
+      const response = await fetch(`${API_URL}/tables`);
       
-      if (!SQL) {
-        throw new Error('Failed to initialize SQL.js');
+      if (!response.ok) {
+        throw new Error(`Failed to connect to SQLite API: ${response.statusText}`);
       }
       
-      console.log('SQL.js initialized successfully');
+      const tables = await response.json();
+      console.log('Connected to SQLite API successfully, available tables:', tables);
       
-      // Try to load existing database from IndexedDB
-      const savedDbData = await loadDbFromIndexedDB();
+      // Ensure our required tables exist
+      await createTables();
       
-      if (savedDbData) {
-        try {
-          // Open the database with the saved data
-          db = new SQL.Database(savedDbData);
-          console.log("Database loaded from IndexedDB");
-        } catch (loadError) {
-          console.error("Failed to load database from IndexedDB, creating new:", loadError);
-          db = new SQL.Database();
-          createTables();
-        }
-      } else {
-        // Create a new database
-        db = new SQL.Database();
-        createTables();
-        console.log("New database created");
-      }
-      
+      isInitialized = true;
       isInitializing = false;
+      console.log('Database initialized successfully');
       resolve();
     } catch (error) {
       console.error("Failed to initialize database:", error);
@@ -155,11 +56,9 @@ export const initDatabase = async (): Promise<void> => {
 };
 
 // Create the database tables
-const createTables = () => {
-  if (!db) return;
-  
+const createTables = async () => {
   // Table for generic key-value pairs
-  db.exec(`
+  await executeWrite(`
     CREATE TABLE IF NOT EXISTS key_value_store (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
@@ -167,7 +66,7 @@ const createTables = () => {
   `);
   
   // Table for habits
-  db.exec(`
+  await executeWrite(`
     CREATE TABLE IF NOT EXISTS habits (
       id INTEGER PRIMARY KEY,
       name TEXT NOT NULL,
@@ -179,7 +78,7 @@ const createTables = () => {
   `);
   
   // Table for daily habit status
-  db.exec(`
+  await executeWrite(`
     CREATE TABLE IF NOT EXISTS daily_habits (
       date TEXT,
       habit_id INTEGER,
@@ -189,7 +88,7 @@ const createTables = () => {
   `);
   
   // Table for tasks
-  db.exec(`
+  await executeWrite(`
     CREATE TABLE IF NOT EXISTS tasks (
       id INTEGER PRIMARY KEY,
       title TEXT NOT NULL,
@@ -201,31 +100,37 @@ const createTables = () => {
   `);
   
   // Table for calendar data
-  db.exec(`
+  await executeWrite(`
     CREATE TABLE IF NOT EXISTS calendar_data (
       date TEXT PRIMARY KEY,
       data TEXT NOT NULL
     );
   `);
   
-  console.log("Database tables created");
-};
-
-// Save the database to IndexedDB
-export const saveDatabase = async () => {
-  if (!db) return;
+  // Table for users (if it doesn't exist)
+  await executeWrite(`
+    CREATE TABLE IF NOT EXISTS users (
+      username TEXT PRIMARY KEY,
+      password TEXT NOT NULL,
+      is_admin BOOLEAN DEFAULT 0
+    );
+  `);
   
-  try {
-    // Export the database to a Uint8Array
-    const data = db.export();
-    
-    // Save to IndexedDB
-    await saveDbToIndexedDB(data);
-    console.log("Database saved to IndexedDB");
-  } catch (error) {
-    console.error("Failed to save database:", error);
-    toast.error("Failed to save database. Your changes may not persist.");
+  // Check if any users exist
+  const users = await executeQuery<{ count: number }>(
+    "SELECT COUNT(*) as count FROM users"
+  );
+  
+  // If no users exist, create a default admin user
+  if (users.length === 0 || users[0].count === 0) {
+    await executeWrite(
+      "INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)",
+      ["admin", "admin", 1]
+    );
+    console.log("Created default admin user");
   }
+  
+  console.log("Database tables created or verified");
 };
 
 // Function to execute a query and return the results
@@ -235,23 +140,28 @@ export const executeQuery = async <T>(
 ): Promise<T[]> => {
   await ensureDatabaseInitialized();
   
-  if (!db) throw new Error("Database not initialized");
-  
   try {
-    const statement = db.prepare(query);
-    statement.bind(params);
+    // Replace ? with $1, $2, etc. for SQLite API
+    const parameterizedQuery = query.replace(/\?/g, (match, index) => `$${index + 1}`);
     
-    const results: T[] = [];
-    while (statement.step()) {
-      results.push(statement.getAsObject() as T);
+    const response = await fetch(`${API_URL}/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: parameterizedQuery,
+        params: params,
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Query execution failed: ${errorText}`);
     }
     
-    statement.free();
-    
-    // Save changes to IndexedDB
-    await saveDatabase();
-    
-    return results;
+    const result = await response.json();
+    return result as T[];
   } catch (error) {
     console.error("Query execution error:", error, "Query:", query, "Params:", params);
     throw error;
@@ -265,16 +175,25 @@ export const executeWrite = async (
 ): Promise<void> => {
   await ensureDatabaseInitialized();
   
-  if (!db) throw new Error("Database not initialized");
-  
   try {
-    const statement = db.prepare(query);
-    statement.bind(params);
-    statement.step();
-    statement.free();
+    // Replace ? with $1, $2, etc. for SQLite API
+    const parameterizedQuery = query.replace(/\?/g, (match, index) => `$${index + 1}`);
     
-    // Save changes to IndexedDB
-    await saveDatabase();
+    const response = await fetch(`${API_URL}/execute`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: parameterizedQuery,
+        params: params,
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Write operation failed: ${errorText}`);
+    }
   } catch (error) {
     console.error("Write operation error:", error, "Query:", query, "Params:", params);
     throw error;
@@ -283,7 +202,7 @@ export const executeWrite = async (
 
 // Function to ensure the database is initialized before use
 const ensureDatabaseInitialized = async (): Promise<void> => {
-  if (!db) {
+  if (!isInitialized) {
     await initDatabase();
   }
 };
@@ -318,7 +237,7 @@ export const saveData = async <T>(key: string, value: T): Promise<void> => {
       [key]
     );
     
-    if (exists[0].count > 0) {
+    if (exists.length > 0 && exists[0].count > 0) {
       // Update existing record
       await executeWrite(
         "UPDATE key_value_store SET value = ? WHERE key = ?",

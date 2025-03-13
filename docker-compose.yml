@@ -16,15 +16,15 @@ services:
       - ./tailwind.config.ts:/app/tailwind.config.ts
       - ./postcss.config.js:/app/postcss.config.js
       # Don't mount node_modules from host to container
-      - sql_wasm_volume:/app/public/wasm
     environment:
       - NODE_ENV=production
       - VITE_BASE_URL=/
-      # Add MIME type for WASM
-      - VITE_SERVER_MIME_TYPES=wasm:application/wasm
+      - DATABASE_URL=http://sqlite:3000
     restart: unless-stopped
     networks:
       - zentracker_network
+    depends_on:
+      - sqlite
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
       interval: 30s
@@ -32,8 +32,20 @@ services:
       retries: 3
       start_period: 10s
 
+  sqlite:
+    image: penyojs/sqlite-api
+    volumes:
+      - sqlite_data:/data
+    environment:
+      - DB_FILENAME=/data/zentracker.db
+    ports:
+      - "3000:3000"
+    networks:
+      - zentracker_network
+    restart: unless-stopped
+
 networks:
   zentracker_network:
 
 volumes:
-  sql_wasm_volume:
+  sqlite_data:
