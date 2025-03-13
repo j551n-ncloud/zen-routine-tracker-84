@@ -26,8 +26,8 @@ export const initDatabase = async (): Promise<void> => {
     try {
       console.log('Initializing database connection to SQLite REST API server');
       
-      // Test connection to jonamat/sqlite-rest API
-      const response = await fetch(`${API_URL}/tables`);
+      // Test connection to b4fun/sqlite-rest API
+      const response = await fetch(`${API_URL}/api/tables`);
       
       if (!response.ok) {
         throw new Error(`Failed to connect to SQLite REST API: ${response.statusText}`);
@@ -141,15 +141,15 @@ export const executeQuery = async <T>(
   await ensureDatabaseInitialized();
   
   try {
-    // For jonamat/sqlite-rest, we need to use the right endpoint format
-    const response = await fetch(`${API_URL}/query`, {
+    // For b4fun/sqlite-rest API
+    const response = await fetch(`${API_URL}/api/query`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        query: query,
-        params: params,
+        q: query,
+        args: params,
       }),
     });
     
@@ -159,7 +159,7 @@ export const executeQuery = async <T>(
     }
     
     const result = await response.json();
-    return result.data || [];
+    return result.rows || [];
   } catch (error) {
     console.error("Query execution error:", error, "Query:", query, "Params:", params);
     throw error;
@@ -174,15 +174,15 @@ export const executeWrite = async (
   await ensureDatabaseInitialized();
   
   try {
-    // For jonamat/sqlite-rest, use the execute endpoint for writes
-    const response = await fetch(`${API_URL}/execute`, {
+    // For b4fun/sqlite-rest API
+    const response = await fetch(`${API_URL}/api/execute`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        query: query,
-        params: params,
+        q: query,
+        args: params,
       }),
     });
     

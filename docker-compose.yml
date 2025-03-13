@@ -33,11 +33,11 @@ services:
       start_period: 10s
 
   sqlite:
-    image: jonamat/sqlite-rest
+    image: ghcr.io/b4fun/sqlite-rest/server:main
     volumes:
       - sqlite_data:/data
     environment:
-      - SQLITE_FILE=/data/zentracker.db
+      - SQLITE_DATABASE=/data/zentracker.db
     # Removed the public port mapping so it's only accessible within the network
     networks:
       - zentracker_network
