@@ -1,3 +1,4 @@
+
 # Welcome to your Lovable project
 
 ## Project info
@@ -36,6 +37,23 @@ npm i
 npm run dev
 ```
 
+**Run with Docker**
+
+You can also run this project using Docker and Docker Compose:
+
+```sh
+# Build and start both frontend and backend services
+docker-compose up
+
+# Or run in detached mode
+docker-compose up -d
+
+# Stop the services
+docker-compose down
+```
+
+The frontend will be available at http://localhost:8080 and the backend API at http://localhost:3001.
+
 **Edit a file directly in GitHub**
 
 - Navigate to the desired file(s).
@@ -52,17 +70,21 @@ npm run dev
 
 ## What technologies are used for this project?
 
-This project is built with .
+This project is built with:
 
 - Vite
 - TypeScript
 - React
 - shadcn-ui
 - Tailwind CSS
+- Express (Backend API)
+- Docker & Docker Compose
 
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/2168413d-0709-4542-8c9d-07fd99900810) and click on Share -> Publish.
+
+For Docker deployment, you can build and run the Docker images on any platform that supports Docker.
 
 ## I want to use a custom domain - is that possible?
 

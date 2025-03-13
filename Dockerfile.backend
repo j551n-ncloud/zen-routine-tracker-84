@@ -1,0 +1,21 @@
+
+FROM node:18-alpine
+
+# Create app directory
+WORKDIR /app
+
+# Install dependencies first (for better caching)
+COPY package*.json ./
+RUN npm install
+
+# Copy server files
+COPY src/server ./src/server
+
+# Create data directory
+RUN mkdir -p data
+
+# Expose the backend port
+EXPOSE 3001
+
+# Start the server
+CMD ["node", "src/server/server.js"]
