@@ -24,34 +24,46 @@ app.use(cors({
 }));
 app.use(bodyParser.json({ limit: '10mb' }));
 
+// Debug middleware to log requests
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Data endpoints - note that the /api prefix is now handled by nginx
-app.get('/data/:key', (req, res) => {
+// Support both /data/:key and /api/data/:key paths
+const handleDataGet = (req, res) => {
   try {
     const { key } = req.params;
     const filePath = path.join(DATA_DIR, `${key}.json`);
     
+    console.log(`GET data for key: ${key}, checking file: ${filePath}`);
+    
     if (fs.existsSync(filePath)) {
       const data = fs.readFileSync(filePath, 'utf8');
+      console.log(`Data found for key: ${key}`);
       return res.json(JSON.parse(data));
     } else {
+      console.log(`No data found for key: ${key}`);
       return res.json(null);
     }
   } catch (error) {
     console.error('Error retrieving data:', error);
     return res.status(500).json({ error: 'Failed to retrieve data' });
   }
-});
+};
 
-app.post('/data/:key', (req, res) => {
+const handleDataPost = (req, res) => {
   try {
     const { key } = req.params;
     const { value } = req.body;
     const filePath = path.join(DATA_DIR, `${key}.json`);
+    
+    console.log(`POST data for key: ${key}`);
     
     fs.writeFileSync(filePath, JSON.stringify(value, null, 2));
     console.log(`Data saved for key: ${key}`);
@@ -60,11 +72,25 @@ app.post('/data/:key', (req, res) => {
     console.error('Error saving data:', error);
     return res.status(500).json({ error: 'Failed to save data' });
   }
-});
+};
 
-// Fallback for all other routes
-app.get('*', (req, res) => {
-  res.status(404).json({ error: 'Not found. Use /data/:key for data operations.' });
+// Handle both routes with and without /api prefix
+app.get('/data/:key', handleDataGet);
+app.post('/data/:key', handleDataPost);
+
+// For backward compatibility or if nginx doesn't strip the prefix
+app.get('/api/data/:key', handleDataGet);
+app.post('/api/data/:key', handleDataPost);
+
+// Fallback for all other routes with useful error message
+app.use('*', (req, res) => {
+  console.log(`404 Not Found: ${req.originalUrl}`);
+  res.status(404).json({ 
+    error: 'Not found',
+    message: 'Valid endpoints are /data/:key, /api/data/:key, and /health',
+    method: req.method,
+    url: req.originalUrl
+  });
 });
 
 // Start the server
