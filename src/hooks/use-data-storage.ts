@@ -3,8 +3,8 @@ import { useState, useEffect } from "react";
 
 // Base URL for API - adjust based on your deployment
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? window.location.origin 
-  : 'http://localhost:3001';
+  ? `${window.location.origin}/api` 
+  : 'http://localhost:3001/api';
 
 export function useDataStorage<T>(key: string, initialValue: T) {
   // State to store our value
@@ -19,7 +19,7 @@ export function useDataStorage<T>(key: string, initialValue: T) {
         setIsLoading(true);
         
         // Fetch from server
-        const response = await fetch(`${API_BASE_URL}/api/data/${key}`);
+        const response = await fetch(`${API_BASE_URL}/data/${key}`);
         
         if (!response.ok) {
           throw new Error(`Server responded with ${response.status}`);
@@ -56,7 +56,7 @@ export function useDataStorage<T>(key: string, initialValue: T) {
       setStoredValue(valueToStore);
       
       // Save to server
-      const response = await fetch(`${API_BASE_URL}/api/data/${key}`, {
+      const response = await fetch(`${API_BASE_URL}/data/${key}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

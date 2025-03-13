@@ -20,8 +20,13 @@ if (!fs.existsSync(DATA_DIR)) {
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
 // GET endpoint to retrieve data by key
-app.get('/api/data/:key', (req, res) => {
+app.get('/data/:key', (req, res) => {
   try {
     const { key } = req.params;
     const filePath = path.join(DATA_DIR, `${key}.json`);
@@ -39,13 +44,14 @@ app.get('/api/data/:key', (req, res) => {
 });
 
 // POST endpoint to save data
-app.post('/api/data/:key', (req, res) => {
+app.post('/data/:key', (req, res) => {
   try {
     const { key } = req.params;
     const { value } = req.body;
     const filePath = path.join(DATA_DIR, `${key}.json`);
     
     fs.writeFileSync(filePath, JSON.stringify(value, null, 2));
+    console.log(`Data saved for key: ${key}`);
     return res.json({ success: true });
   } catch (error) {
     console.error('Error saving data:', error);
