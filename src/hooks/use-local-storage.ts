@@ -53,7 +53,12 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       }
     };
 
-    syncFromServer();
+    // Add a small delay to prevent too many simultaneous requests
+    const timeoutId = setTimeout(() => {
+      syncFromServer();
+    }, Math.random() * 1000); // Random delay up to 1 second to spread out requests
+
+    return () => clearTimeout(timeoutId);
   }, [key]);
 
   // Return a wrapped version of useState's setter function that

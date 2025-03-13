@@ -9,7 +9,8 @@ export const getApiBaseUrl = (): string => {
   
   // For custom domains like habit.j551n.com
   if (window.location.hostname === 'habit.j551n.com') {
-    return `${window.location.origin}/api`;
+    // Make sure we're using the right path format for this domain
+    return `${window.location.origin}`;
   }
   
   // For local development
@@ -29,10 +30,19 @@ export const fetchData = async <T>(key: string): Promise<T | null> => {
   
   // Ensure the key matches patterns recognized by the server
   const formattedKey = ensureValidKey(key);
-  console.log(`Fetching data from: ${apiBaseUrl}/${formattedKey}`);
+  let endpoint = '';
+  
+  // For the custom domain, we need a different endpoint structure
+  if (window.location.hostname === 'habit.j551n.com') {
+    endpoint = `${apiBaseUrl}/api/${formattedKey}`;
+  } else {
+    endpoint = `${apiBaseUrl}/${formattedKey}`;
+  }
+  
+  console.log(`Fetching data from: ${endpoint}`);
   
   try {
-    const response = await fetch(`${apiBaseUrl}/${formattedKey}`);
+    const response = await fetch(endpoint);
     
     if (!response.ok) {
       throw new Error(`Server responded with ${response.status}`);
@@ -46,7 +56,7 @@ export const fetchData = async <T>(key: string): Promise<T | null> => {
     
     return await response.json();
   } catch (error) {
-    console.error(`Error fetching from ${apiBaseUrl}/${formattedKey}:`, error);
+    console.error(`Error fetching from ${endpoint}:`, error);
     throw error;
   }
 };
@@ -57,10 +67,19 @@ export const saveData = async <T>(key: string, value: T): Promise<void> => {
   
   // Ensure the key matches patterns recognized by the server
   const formattedKey = ensureValidKey(key);
-  console.log(`Saving data to: ${apiBaseUrl}/${formattedKey}`);
+  let endpoint = '';
+  
+  // For the custom domain, we need a different endpoint structure
+  if (window.location.hostname === 'habit.j551n.com') {
+    endpoint = `${apiBaseUrl}/api/${formattedKey}`;
+  } else {
+    endpoint = `${apiBaseUrl}/${formattedKey}`;
+  }
+  
+  console.log(`Saving data to: ${endpoint}`);
   
   try {
-    const response = await fetch(`${apiBaseUrl}/${formattedKey}`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -72,7 +91,7 @@ export const saveData = async <T>(key: string, value: T): Promise<void> => {
       throw new Error(`Server responded with ${response.status}`);
     }
   } catch (error) {
-    console.error(`Error saving to ${apiBaseUrl}/${formattedKey}:`, error);
+    console.error(`Error saving to ${endpoint}:`, error);
     throw error;
   }
 };

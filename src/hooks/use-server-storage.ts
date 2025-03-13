@@ -24,20 +24,35 @@ export function useServerStorage<T>(key: string, initialValue: T) {
         } else {
           // If no data on server, use initial value
           setStoredValue(initialValue);
+          
+          // Try to save the initial value to server
+          try {
+            await saveData(key, initialValue);
+          } catch (saveError) {
+            console.warn(`Could not save initial value for ${key}:`, saveError);
+            // Don't show toast for this case
+          }
         }
       } catch (err) {
         console.error('Error fetching data:', err);
         setError(err instanceof Error ? err : new Error(String(err)));
         setStoredValue(initialValue);
         
-        // Show a toast notification for user feedback
-        toast.error("Failed to load data from server");
+        // Only show the toast if we're not on the custom domain with expected 404s
+        if (!(window.location.hostname === 'habit.j551n.com' && err.message?.includes('404'))) {
+          toast.error("Failed to load data from server");
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchDataFromServer();
+    // Add a small delay to prevent too many simultaneous requests
+    const timeoutId = setTimeout(() => {
+      fetchDataFromServer();
+    }, Math.random() * 1000); // Random delay up to 1 second to spread out requests
+
+    return () => clearTimeout(timeoutId);
   }, [key, initialValue]);
 
   // Function to save data to the server
@@ -47,7 +62,7 @@ export function useServerStorage<T>(key: string, initialValue: T) {
       const valueToStore =
         value instanceof Function ? value(storedValue) : value;
       
-      // Save state
+      // Save state locally first
       setStoredValue(valueToStore);
       
       // Save to server using our helper
@@ -56,8 +71,10 @@ export function useServerStorage<T>(key: string, initialValue: T) {
       console.error('Error saving data:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
       
-      // Show a toast notification for user feedback
-      toast.error("Failed to save data to server");
+      // Only show the toast if we're not on the custom domain with expected 404s
+      if (!(window.location.hostname === 'habit.j551n.com' && err.message?.includes('404'))) {
+        toast.error("Failed to save data to server");
+      }
     }
   };
 
