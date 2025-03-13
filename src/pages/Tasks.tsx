@@ -1,8 +1,8 @@
 
 import React from "react";
-import { TaskManager } from "@/components/tasks/TaskManager";
-import { FocusToday } from "@/components/tasks/FocusToday";
-import { EnergyTracker } from "@/components/tasks/EnergyTracker";
+import TaskManager from "@/components/tasks/TaskManager";
+import FocusToday from "@/components/tasks/FocusToday";
+import EnergyTracker from "@/components/tasks/EnergyTracker";
 import AppLayout from "@/components/layout/AppLayout";
 
 const Tasks = () => {

@@ -15,7 +15,7 @@ const CalendarPage = () => {
         <Card className="shadow-subtle">
           <CardContent className="p-6">
             <Calendar 
-              mode="month"
+              mode="single"
               className="rounded-md"
             />
           </CardContent>

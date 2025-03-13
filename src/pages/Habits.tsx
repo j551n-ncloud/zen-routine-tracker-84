@@ -1,7 +1,7 @@
 
 import React from "react";
-import { HabitTracker } from "@/components/habits/HabitTracker";
-import { MonthlyView } from "@/components/habits/MonthlyView";
+import HabitTracker from "@/components/habits/HabitTracker";
+import MonthlyView from "@/components/habits/MonthlyView";
 import AppLayout from "@/components/layout/AppLayout";
 
 const Habits = () => {
