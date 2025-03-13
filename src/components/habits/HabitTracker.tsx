@@ -7,10 +7,17 @@ import {
   Dumbbell,
   BookOpen,
   BedDouble,
-  Coffee
+  Coffee,
+  X
 } from "lucide-react";
 import StreakBadge from "./StreakBadge";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 
 // Sample habit categories and their associated icons
 const habitCategories = [
@@ -20,6 +27,15 @@ const habitCategories = [
   { id: "sleep", name: "Sleep", color: "text-purple-500" },
   { id: "mindfulness", name: "Mindfulness", color: "text-teal-500" },
 ];
+
+// Icons mapping for the habit categories
+const categoryIcons = {
+  "health": Droplets,
+  "fitness": Dumbbell,
+  "learning": BookOpen,
+  "sleep": BedDouble,
+  "mindfulness": Coffee,
+};
 
 // Sample habit data with streaks
 const initialHabits = [
@@ -67,6 +83,8 @@ const initialHabits = [
 
 const HabitTracker: React.FC = () => {
   const [habits, setHabits] = useState(initialHabits);
+  const [isAddHabitOpen, setIsAddHabitOpen] = useState(false);
+  const [newHabit, setNewHabit] = useState({ name: "", category: "" });
 
   const toggleHabit = (id: number) => {
     setHabits(habits.map(habit => 
@@ -83,6 +101,33 @@ const HabitTracker: React.FC = () => {
   const getCategoryColor = (categoryId: string) => {
     const category = habitCategories.find(c => c.id === categoryId);
     return category?.color || "text-gray-500";
+  };
+
+  const handleAddHabit = () => {
+    if (!newHabit.name.trim() || !newHabit.category) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    const newId = Math.max(...habits.map(h => h.id), 0) + 1;
+    const category = newHabit.category as keyof typeof categoryIcons;
+    const icon = categoryIcons[category] || Coffee;
+
+    setHabits([
+      ...habits,
+      {
+        id: newId,
+        name: newHabit.name,
+        streak: 0,
+        completed: false,
+        category: newHabit.category,
+        icon,
+      }
+    ]);
+
+    setNewHabit({ name: "", category: "" });
+    setIsAddHabitOpen(false);
+    toast.success("New habit added successfully");
   };
 
   return (
@@ -131,7 +176,10 @@ const HabitTracker: React.FC = () => {
         ))}
         
         {/* Add New Habit Card */}
-        <div className="bg-card/50 rounded-xl border border-dashed p-4 flex items-center justify-center hover-scale cursor-pointer">
+        <div 
+          className="bg-card/50 rounded-xl border border-dashed p-4 flex items-center justify-center hover-scale cursor-pointer"
+          onClick={() => setIsAddHabitOpen(true)}
+        >
           <div className="flex flex-col items-center text-muted-foreground">
             <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-2">
               <Plus className="h-5 w-5" />
@@ -140,6 +188,54 @@ const HabitTracker: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Add Habit Dialog */}
+      <Dialog open={isAddHabitOpen} onOpenChange={setIsAddHabitOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add New Habit</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="habit-name">Habit Name</Label>
+              <Input 
+                id="habit-name" 
+                value={newHabit.name} 
+                onChange={(e) => setNewHabit({...newHabit, name: e.target.value})}
+                placeholder="e.g., Drink Water, Exercise, Meditate"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="habit-category">Category</Label>
+              <Select 
+                value={newHabit.category} 
+                onValueChange={(value) => setNewHabit({...newHabit, category: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {habitCategories.map(category => (
+                    <SelectItem key={category.id} value={category.id}>
+                      <div className="flex items-center">
+                        <span className={`mr-2 ${category.color}`}>
+                          {category.name}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddHabitOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddHabit}>Add Habit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

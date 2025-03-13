@@ -14,6 +14,15 @@ import {
   CalendarDays 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 // Sample task data
 const initialTasks = [
@@ -121,6 +130,13 @@ const PriorityBadge = ({ priority }: { priority: string }) => {
 const TaskManager: React.FC = () => {
   const [tasks, setTasks] = useState(initialTasks);
   const [activeTab, setActiveTab] = useState('today');
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [newTask, setNewTask] = useState({
+    title: '',
+    priority: 'medium',
+    dueDate: new Date(),
+  });
+  const [upcomingTasksList, setUpcomingTasksList] = useState(upcomingTasks);
 
   const toggleTaskCompletion = (id: number) => {
     setTasks(tasks.map(task => 
@@ -168,9 +184,52 @@ const TaskManager: React.FC = () => {
 
   const getActiveTasks = () => {
     if (activeTab === 'upcoming') {
-      return upcomingTasks;
+      return upcomingTasksList;
     }
     return tasks;
+  };
+
+  const handleAddTask = () => {
+    if (!newTask.title.trim()) {
+      toast.error("Task title is required");
+      return;
+    }
+
+    const allTasks = [...tasks, ...upcomingTasksList];
+    const newId = Math.max(...allTasks.map(t => t.id), 0) + 1;
+    
+    const taskToAdd = {
+      id: newId,
+      title: newTask.title,
+      priority: newTask.priority,
+      completed: false,
+      dueDate: newTask.dueDate,
+    };
+
+    // Check if task should go in today or upcoming list
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const taskDate = new Date(newTask.dueDate);
+    taskDate.setHours(0, 0, 0, 0);
+    
+    const threeDaysFromNow = new Date(today);
+    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+    
+    if (taskDate <= threeDaysFromNow) {
+      setTasks([...tasks, taskToAdd]);
+    } else {
+      setUpcomingTasksList([...upcomingTasksList, taskToAdd]);
+    }
+
+    setNewTask({
+      title: '',
+      priority: 'medium',
+      dueDate: new Date(),
+    });
+    
+    setIsAddTaskOpen(false);
+    toast.success("Task added successfully");
   };
 
   return (
@@ -181,7 +240,10 @@ const TaskManager: React.FC = () => {
             <TabsTrigger value="today">Today</TabsTrigger>
             <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
           </TabsList>
-          <button className="rounded-full p-1.5 bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+          <button 
+            className="rounded-full p-1.5 bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+            onClick={() => setIsAddTaskOpen(true)}
+          >
             <Plus className="h-4 w-4" />
           </button>
         </div>
@@ -250,7 +312,7 @@ const TaskManager: React.FC = () => {
           
           <TabsContent value="upcoming" className="m-0">
             <div className="divide-y">
-              {upcomingTasks.map(task => (
+              {upcomingTasksList.map(task => (
                 <div 
                   key={task.id}
                   className="flex items-center justify-between p-4 group hover:bg-muted/30 transition-colors"
@@ -286,6 +348,70 @@ const TaskManager: React.FC = () => {
           </TabsContent>
         </CardContent>
       </Tabs>
+
+      {/* Add Task Dialog */}
+      <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add New Task</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="task-title">Task Title</Label>
+              <Input 
+                id="task-title" 
+                value={newTask.title} 
+                onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                placeholder="What do you need to do?"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="task-priority">Priority</Label>
+              <Select 
+                value={newTask.priority} 
+                onValueChange={(value) => setNewTask({...newTask, priority: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Due Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="justify-start text-left font-normal"
+                  >
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {newTask.dueDate ? format(newTask.dueDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={newTask.dueDate}
+                    onSelect={(date) => date && setNewTask({...newTask, dueDate: date})}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddTaskOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddTask}>Add Task</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Battery, Clock, Coffee, Plus, Edit } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 const EnergyTracker: React.FC = () => {
@@ -35,6 +37,8 @@ const EnergyTracker: React.FC = () => {
         setBreaks([...breaks, newBreak]);
         setNewBreak('');
         toast.success('Break time added');
+      } else {
+        toast.error('Please enter a valid break time');
       }
       setIsAddingBreak(false);
     } else {
@@ -54,6 +58,8 @@ const EnergyTracker: React.FC = () => {
       setPeakHours(updatedPeakHours);
       setEditingPeakHour(null);
       toast.success('Peak hours updated');
+    } else {
+      toast.error('Please enter valid peak hours');
     }
   };
 
@@ -166,12 +172,12 @@ const EnergyTracker: React.FC = () => {
                   placeholder="e.g., 2:30 PM"
                   className="flex-1"
                 />
-                <button 
+                <Button 
                   onClick={handleAddBreak}
-                  className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+                  size="sm"
                 >
                   Add
-                </button>
+                </Button>
               </div>
             ) : (
               <button 
