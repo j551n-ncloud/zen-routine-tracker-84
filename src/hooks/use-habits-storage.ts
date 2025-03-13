@@ -74,7 +74,7 @@ export function useHabitsStorage() {
         ? { 
             ...habit, 
             completed: !habit.completed,
-            streak: !habit.completed ? habit.streak + 1 : habit.streak - 1
+            streak: !habit.completed ? habit.streak + 1 : Math.max(habit.streak - 1, 0)
           } 
         : habit
     ));

@@ -84,6 +84,8 @@ const HabitTracker: React.FC = () => {
     updateHabit(editingHabit.id, {
       name: editingHabit.name,
       category: editingHabit.category,
+      streak: editingHabit.streak,
+      completed: editingHabit.completed
     });
 
     setIsEditHabitOpen(false);
