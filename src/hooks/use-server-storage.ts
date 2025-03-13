@@ -1,23 +1,6 @@
 
 import { useState, useEffect } from "react";
-
-// Base URL for API - adjusted to use /api path prefix
-const API_BASE_URL = (() => {
-  // For production environments
-  if (process.env.NODE_ENV === 'production') {
-    return `${window.location.origin}/api`;
-  }
-  
-  // For local development
-  // Check if accessing from a mobile device on the same network
-  const hostname = window.location.hostname;
-  if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-    return `${window.location.origin}/api`;
-  }
-  
-  // Default for localhost
-  return 'http://localhost:3001';
-})();
+import { getApiBaseUrl } from "./api-utils";
 
 export function useServerStorage<T>(key: string, initialValue: T) {
   // State to store our value
@@ -30,10 +13,11 @@ export function useServerStorage<T>(key: string, initialValue: T) {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        console.log(`Fetching data from: ${API_BASE_URL}/data/${key}`);
+        const apiBaseUrl = getApiBaseUrl();
+        console.log(`Fetching data from: ${apiBaseUrl}/data/${key}`);
         
         // Fetch from server
-        const response = await fetch(`${API_BASE_URL}/data/${key}`);
+        const response = await fetch(`${apiBaseUrl}/data/${key}`);
         
         if (!response.ok) {
           throw new Error(`Server responded with ${response.status}`);
@@ -74,10 +58,11 @@ export function useServerStorage<T>(key: string, initialValue: T) {
       // Save state
       setStoredValue(valueToStore);
       
-      console.log(`Saving data to: ${API_BASE_URL}/data/${key}`);
+      const apiBaseUrl = getApiBaseUrl();
+      console.log(`Saving data to: ${apiBaseUrl}/data/${key}`);
       
       // Save to server
-      const response = await fetch(`${API_BASE_URL}/data/${key}`, {
+      const response = await fetch(`${apiBaseUrl}/data/${key}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -3,6 +3,12 @@
 export const getApiBaseUrl = (): string => {
   // For production environments
   if (process.env.NODE_ENV === 'production') {
+    // Use /api path prefix for the Cloudflare tunnel configuration
+    return `${window.location.origin}/api`;
+  }
+  
+  // For custom domains like habit.j551n.com
+  if (window.location.hostname === 'habit.j551n.com') {
     return `${window.location.origin}/api`;
   }
   

@@ -96,6 +96,7 @@ const handleDataPost = (req, res) => {
 };
 
 // Handle all possible path formats
+
 // 1. /data/:key  
 app.get('/data/:key', handleDataGet);
 app.post('/data/:key', handleDataPost);
@@ -103,6 +104,11 @@ app.post('/data/:key', handleDataPost);
 // 2. /api/data/:key
 app.get('/api/data/:key', handleDataGet);
 app.post('/api/data/:key', handleDataPost);
+
+// 3. Handle root requests of /api to support Cloudflare tunnel configuration
+app.get('/api', (req, res) => {
+  res.json({ status: 'ok', message: 'API is running' });
+});
 
 // Add explicit handling for OPTIONS requests
 app.options('*', (req, res) => {
