@@ -35,7 +35,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Support both /data/:key and /api/data/:key paths
+// Support multiple path formats for data access
 const handleDataGet = (req, res) => {
   try {
     const { key } = req.params;
@@ -80,13 +80,18 @@ const handleDataPost = (req, res) => {
   }
 };
 
-// Handle both routes with and without /api prefix
+// Handle all possible path formats
+// 1. /data/:key
 app.get('/data/:key', handleDataGet);
 app.post('/data/:key', handleDataPost);
 
-// For backward compatibility or if nginx doesn't strip the prefix
+// 2. /api/data/:key
 app.get('/api/data/:key', handleDataGet);
 app.post('/api/data/:key', handleDataPost);
+
+// 3. api/data/:key (without leading slash)
+app.get('api/data/:key', handleDataGet);
+app.post('api/data/:key', handleDataPost);
 
 // Add explicit handling for OPTIONS requests
 app.options('*', (req, res) => {
@@ -101,7 +106,7 @@ app.use('*', (req, res) => {
   console.log(`404 Not Found: ${req.originalUrl}`);
   res.status(404).json({ 
     error: 'Not found',
-    message: 'Valid endpoints are /data/:key, /api/data/:key, and /health',
+    message: 'Valid endpoints are /data/:key, /api/data/:key, api/data/:key, and /health',
     method: req.method,
     url: req.originalUrl
   });
