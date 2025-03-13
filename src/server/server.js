@@ -17,7 +17,11 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow requests from any origin for development
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(bodyParser.json({ limit: '10mb' }));
 
 // Health check endpoint

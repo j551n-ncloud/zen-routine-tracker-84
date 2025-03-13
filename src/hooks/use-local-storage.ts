@@ -1,10 +1,24 @@
 
 import { useState, useEffect } from "react";
 
-// Base URL for API - adjust based on your deployment
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? `${window.location.origin}/api` 
-  : 'http://localhost:3001/api';
+// Base URL for API - adjusted for all access scenarios
+const API_BASE_URL = (() => {
+  // For production environments
+  if (process.env.NODE_ENV === 'production') {
+    return `${window.location.origin}/api`;
+  }
+  
+  // For local development
+  // Check if accessing from a mobile device on the same network
+  const hostname = window.location.hostname;
+  if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+    // When accessing from another device on the network
+    return `${window.location.origin}/api`;
+  }
+  
+  // Default for localhost
+  return 'http://localhost:3001/api';
+})();
 
 export function useLocalStorage<T>(key: string, initialValue: T) {
   // State to store our value
