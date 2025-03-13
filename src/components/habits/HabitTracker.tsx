@@ -8,7 +8,9 @@ import {
   BookOpen,
   BedDouble,
   Coffee,
-  X
+  X,
+  Pencil,
+  Save
 } from "lucide-react";
 import StreakBadge from "./StreakBadge";
 import { cn } from "@/lib/utils";
@@ -18,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { useHabitsStorage } from "@/hooks/use-habits-storage";
+import { useHabitsStorage, Habit } from "@/hooks/use-habits-storage";
 
 // Sample habit categories and their associated icons
 const habitCategories = [
@@ -39,9 +41,11 @@ const categoryIcons: Record<string, React.ElementType> = {
 };
 
 const HabitTracker: React.FC = () => {
-  const { habits, addHabit, toggleHabit } = useHabitsStorage();
+  const { habits, addHabit, toggleHabit, updateHabit, removeHabit } = useHabitsStorage();
   const [isAddHabitOpen, setIsAddHabitOpen] = useState(false);
+  const [isEditHabitOpen, setIsEditHabitOpen] = useState(false);
   const [newHabit, setNewHabit] = useState({ name: "", category: "" });
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
 
   const getCategoryColor = (categoryId: string) => {
     const category = habitCategories.find(c => c.id === categoryId);
@@ -66,6 +70,34 @@ const HabitTracker: React.FC = () => {
     setNewHabit({ name: "", category: "" });
     setIsAddHabitOpen(false);
     toast.success("New habit added successfully");
+  };
+
+  const handleEditHabit = () => {
+    if (!editingHabit) return;
+    
+    if (!editingHabit.name.trim() || !editingHabit.category) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    updateHabit(editingHabit.id, {
+      name: editingHabit.name,
+      category: editingHabit.category,
+    });
+
+    setIsEditHabitOpen(false);
+    setEditingHabit(null);
+    toast.success("Habit updated successfully");
+  };
+
+  const openEditHabitDialog = (habit: Habit) => {
+    setEditingHabit({...habit});
+    setIsEditHabitOpen(true);
+  };
+
+  const handleDeleteHabit = (id: number) => {
+    removeHabit(id);
+    toast.success("Habit deleted successfully");
   };
 
   return (
@@ -99,7 +131,21 @@ const HabitTracker: React.FC = () => {
                   </div>
                 </div>
                 
-                <StreakBadge count={habit.streak} />
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={() => openEditHabitDialog(habit)}
+                    className="p-1.5 rounded-full text-muted-foreground hover:bg-muted transition-colors"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteHabit(habit.id)}
+                    className="p-1.5 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <StreakBadge count={habit.streak} />
+                </div>
               </div>
               
               {/* Progress indicator bar at bottom */}
@@ -174,6 +220,67 @@ const HabitTracker: React.FC = () => {
               Cancel
             </Button>
             <Button onClick={handleAddHabit}>Add Habit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Habit Dialog */}
+      <Dialog open={isEditHabitOpen} onOpenChange={setIsEditHabitOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Habit</DialogTitle>
+          </DialogHeader>
+          {editingHabit && (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-habit-name">Habit Name</Label>
+                <Input 
+                  id="edit-habit-name" 
+                  value={editingHabit.name} 
+                  onChange={(e) => setEditingHabit({...editingHabit, name: e.target.value})}
+                  placeholder="e.g., Drink Water, Exercise, Meditate"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-habit-category">Category</Label>
+                <Select 
+                  value={editingHabit.category} 
+                  onValueChange={(value) => setEditingHabit({...editingHabit, category: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {habitCategories.map(category => (
+                      <SelectItem key={category.id} value={category.id}>
+                        <div className="flex items-center">
+                          <span className={`mr-2 ${category.color}`}>
+                            {category.name}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Current Streak</Label>
+                <Input 
+                  type="number"
+                  value={editingHabit.streak}
+                  onChange={(e) => setEditingHabit({
+                    ...editingHabit, 
+                    streak: parseInt(e.target.value) || 0
+                  })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditHabitOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditHabit}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

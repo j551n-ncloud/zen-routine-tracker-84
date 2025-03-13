@@ -85,6 +85,26 @@ export const getSelectedDateData = (
   if (savedBreaks[formattedDate]) {
     data.breaks = savedBreaks[formattedDate];
   }
+
+  // Import current habits and their completion status
+  try {
+    const habitsData = localStorage.getItem("zen-tracker-habits");
+    if (habitsData) {
+      const allHabits = JSON.parse(habitsData);
+      // Add any habits not already in the data
+      const existingHabitIds = new Set(data.habits.map(h => h.id));
+      const habitsToAdd = allHabits.filter(h => !existingHabitIds.has(h.id))
+        .map(h => ({
+          id: h.id,
+          name: h.name,
+          completed: h.completed
+        }));
+      
+      data.habits = [...data.habits, ...habitsToAdd];
+    }
+  } catch (error) {
+    console.error("Error getting habits from localStorage:", error);
+  }
   
   return data;
 };

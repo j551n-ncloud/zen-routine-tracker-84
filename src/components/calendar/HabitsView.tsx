@@ -1,5 +1,6 @@
 
 import React from "react";
+import { CheckCircle, X } from "lucide-react";
 
 interface HabitsViewProps {
   habits: Array<{
@@ -21,11 +22,13 @@ const HabitsView: React.FC<HabitsViewProps> = ({ habits }) => {
             >
               <span className="text-sm">{habit.name}</span>
               {habit.completed ? (
-                <span className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded-full">
+                <span className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded-full flex items-center">
+                  <CheckCircle className="h-3 w-3 mr-1" />
                   Done
                 </span>
               ) : (
-                <span className="text-xs px-2 py-1 bg-red-100 text-red-600 rounded-full">
+                <span className="text-xs px-2 py-1 bg-red-100 text-red-600 rounded-full flex items-center">
+                  <X className="h-3 w-3 mr-1" />
                   Missed
                 </span>
               )}

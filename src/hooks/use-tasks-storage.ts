@@ -6,7 +6,7 @@ export interface Task {
   title: string;
   priority: 'high' | 'medium' | 'low';
   completed: boolean;
-  dueDate: Date;
+  dueDate: Date | string;
 }
 
 // Initial task data for new users
@@ -73,6 +73,11 @@ const initialUpcomingTasks: Task[] = [
   },
 ];
 
+// Helper function to ensure we're working with Date objects
+const ensureDate = (dateInput: Date | string): Date => {
+  return dateInput instanceof Date ? dateInput : new Date(dateInput);
+};
+
 export function useTasksStorage() {
   const [tasks, setTasks] = useLocalStorage<Task[]>("zen-tracker-tasks", initialTasks);
   const [upcomingTasks, setUpcomingTasks] = useLocalStorage<Task[]>(
@@ -93,7 +98,7 @@ export function useTasksStorage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const taskDate = new Date(task.dueDate);
+    const taskDate = ensureDate(task.dueDate);
     taskDate.setHours(0, 0, 0, 0);
     
     const threeDaysFromNow = new Date(today);

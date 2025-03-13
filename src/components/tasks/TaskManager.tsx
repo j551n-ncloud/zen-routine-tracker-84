@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -81,41 +80,47 @@ const TaskManager: React.FC = () => {
     dueDate: new Date(),
   });
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
+    const dateObj = date instanceof Date ? date : new Date(date);
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    const taskDate = new Date(date);
+    const taskDate = new Date(dateObj);
     taskDate.setHours(0, 0, 0, 0);
     
     if (taskDate.getTime() === today.getTime()) return 'Today';
     if (taskDate.getTime() === tomorrow.getTime()) return 'Tomorrow';
     
-    return date.toLocaleDateString('en-US', { 
+    return taskDate.toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric'
     });
   };
 
-  const isOverdue = (date: Date) => {
+  const isOverdue = (date: Date | string) => {
+    const dateObj = date instanceof Date ? date : new Date(date);
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const taskDate = new Date(date);
+    const taskDate = new Date(dateObj);
     taskDate.setHours(0, 0, 0, 0);
     
-    return taskDate < today && !isToday(date);
+    return taskDate < today && !isToday(dateObj);
   };
 
-  const isToday = (date: Date) => {
+  const isToday = (date: Date | string) => {
+    const dateObj = date instanceof Date ? date : new Date(date);
+    
     const today = new Date();
     return (
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear()
+      dateObj.getDate() === today.getDate() &&
+      dateObj.getMonth() === today.getMonth() &&
+      dateObj.getFullYear() === today.getFullYear()
     );
   };
 

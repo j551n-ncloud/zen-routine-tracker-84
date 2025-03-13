@@ -84,10 +84,19 @@ export function useHabitsStorage() {
     setHabits(habits.filter(habit => habit.id !== id));
   };
 
+  const updateHabit = (id: number, updates: Partial<Omit<Habit, "id">>) => {
+    setHabits(habits.map(habit => 
+      habit.id === id 
+        ? { ...habit, ...updates } 
+        : habit
+    ));
+  };
+
   return {
     habits,
     addHabit,
     toggleHabit,
-    removeHabit
+    removeHabit,
+    updateHabit
   };
 }
