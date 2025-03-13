@@ -8,7 +8,8 @@ import {
   Settings, 
   Trophy, 
   X,
-  BarChart3
+  BarChart3,
+  ClipboardList
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -80,6 +81,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           href="/tasks" 
           label="Tasks" 
           isActive={path === "/tasks"}
+        />
+        <SidebarLink 
+          icon={ClipboardList} 
+          href="/daily-routine" 
+          label="Daily Routine" 
+          isActive={path === "/daily-routine"}
         />
         <SidebarLink 
           icon={Calendar} 

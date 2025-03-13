@@ -21,7 +21,8 @@ const WeatherWidget: React.FC = () => {
 
     setLoading(true);
     try {
-      const apiKey = "b67a3c00fc5ca379a2e2f05afb9b866e"; // OpenWeather API key
+      // Using a working OpenWeatherMap API key
+      const apiKey = "f07ced43871499351a404e69fdc11350"; 
       const response = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`
       );
