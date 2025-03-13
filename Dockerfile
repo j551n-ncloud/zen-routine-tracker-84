@@ -2,7 +2,7 @@
 FROM node:18-alpine
 
 # Install dependencies for MySQL and nginx
-RUN apk add --no-cache python3 make g++ wget nginx
+RUN apk add --no-cache python3 make g++ wget nginx mysql-client
 
 # Create app directory
 WORKDIR /app
