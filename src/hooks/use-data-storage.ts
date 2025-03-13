@@ -93,7 +93,7 @@ export function useDataStorage<T>(key: string, initialValue: T) {
     data: storedValue, 
     setData: setValue, 
     isLoading, 
-    error, 
+    error,
     // For backward compatibility with useLocalStorage
     0: storedValue, 
     1: setValue 
