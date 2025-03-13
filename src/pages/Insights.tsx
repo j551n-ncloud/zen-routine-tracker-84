@@ -315,8 +315,8 @@ const Insights = () => {
                         dataKey="completed" 
                         fill="#3b82f6" 
                         name="Completion Rate (%)"
-                        // Calculate percentage on the fly
-                        formatter={(value, entry, index) => {
+                        // Use name property instead of formatter
+                        format={(value, index) => {
                           const { completed, total } = taskCompletionData[index];
                           return Math.round((completed / total) * 100);
                         }}
