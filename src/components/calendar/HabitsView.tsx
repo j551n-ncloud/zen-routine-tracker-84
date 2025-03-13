@@ -3,6 +3,8 @@ import React from "react";
 import { CheckCircle, X, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 
 interface HabitsViewProps {
   habits: Array<{
@@ -10,13 +12,45 @@ interface HabitsViewProps {
     name: string;
     completed: boolean;
   }>;
+  date?: Date;
   onToggleHabit?: (id: number, completed: boolean) => void;
 }
 
-const HabitsView: React.FC<HabitsViewProps> = ({ habits, onToggleHabit }) => {
+// Interface for storing daily habit status
+interface DailyHabitStatus {
+  [date: string]: {
+    [habitId: number]: boolean;
+  };
+}
+
+const HabitsView: React.FC<HabitsViewProps> = ({ habits, date, onToggleHabit }) => {
+  const [dailyHabitStatus, setDailyHabitStatus] = useLocalStorage<DailyHabitStatus>(
+    "zen-tracker-daily-habits", 
+    {}
+  );
+
   const handleToggleHabit = (id: number, completed: boolean) => {
     if (onToggleHabit) {
       onToggleHabit(id, completed);
+    } else if (date) {
+      // If we have a date, update the daily habit status
+      const dateKey = format(date, "yyyy-MM-dd");
+      
+      // Create a new object to avoid direct state mutation
+      const newDailyHabitStatus = { ...dailyHabitStatus };
+      
+      // Initialize the date entry if it doesn't exist
+      if (!newDailyHabitStatus[dateKey]) {
+        newDailyHabitStatus[dateKey] = {};
+      }
+      
+      // Toggle the completion status
+      newDailyHabitStatus[dateKey][id] = !completed;
+      
+      // Update state
+      setDailyHabitStatus(newDailyHabitStatus);
+      
+      toast.success(`Habit marked as ${completed ? 'not completed' : 'completed'}`);
     } else {
       toast.success(`Habit marked as ${completed ? 'not completed' : 'completed'}`);
     }

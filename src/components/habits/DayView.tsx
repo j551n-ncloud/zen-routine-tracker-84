@@ -1,20 +1,55 @@
 
-import React, { useState } from "react";
-import { format, subDays, addDays } from "date-fns";
+import React, { useState, useEffect } from "react";
+import { format, subDays, addDays, parseISO } from "date-fns";
 import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useHabitsStorage, Habit } from "@/hooks/use-habits-storage";
 import { toast } from "sonner";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 
 interface DayViewProps {
   className?: string;
 }
 
+// Interface for storing daily habit status
+interface DailyHabitStatus {
+  [date: string]: {
+    [habitId: number]: boolean;
+  };
+}
+
 const DayView: React.FC<DayViewProps> = ({ className }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const { habits, toggleHabit } = useHabitsStorage();
+  const { habits } = useHabitsStorage();
+  const [dailyHabitStatus, setDailyHabitStatus] = useLocalStorage<DailyHabitStatus>(
+    "zen-tracker-daily-habits", 
+    {}
+  );
+  
+  // Format date as string for storage key
+  const dateKey = format(selectedDate, "yyyy-MM-dd");
+  
+  // Get habits with their completed status for the selected date
+  const getHabitsForSelectedDay = () => {
+    // Initialize the date entry if it doesn't exist
+    if (!dailyHabitStatus[dateKey]) {
+      dailyHabitStatus[dateKey] = {};
+    }
+    
+    return habits.map(habit => ({
+      ...habit,
+      completed: dailyHabitStatus[dateKey][habit.id] || false
+    }));
+  };
+  
+  const [displayedHabits, setDisplayedHabits] = useState(getHabitsForSelectedDay());
+  
+  // Update displayed habits when date or habits change
+  useEffect(() => {
+    setDisplayedHabits(getHabitsForSelectedDay());
+  }, [selectedDate, habits, dailyHabitStatus]);
   
   const handlePreviousDay = () => {
     setSelectedDate(subDays(selectedDate, 1));
@@ -25,7 +60,27 @@ const DayView: React.FC<DayViewProps> = ({ className }) => {
   };
   
   const handleToggleHabit = (id: number) => {
-    toggleHabit(id);
+    // Create a new object to avoid direct state mutation
+    const newDailyHabitStatus = { ...dailyHabitStatus };
+    
+    // Initialize the date entry if it doesn't exist
+    if (!newDailyHabitStatus[dateKey]) {
+      newDailyHabitStatus[dateKey] = {};
+    }
+    
+    // Toggle the completion status
+    newDailyHabitStatus[dateKey][id] = !newDailyHabitStatus[dateKey][id];
+    
+    // Update state
+    setDailyHabitStatus(newDailyHabitStatus);
+    
+    // Update streak in the global habits only if it's today
+    const isToday = format(selectedDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+    if (isToday) {
+      // We don't need to call toggleHabit here as we're only tracking daily completion
+      // not modifying the global habit state
+    }
+    
     toast.success("Habit status updated");
   };
   
@@ -58,8 +113,8 @@ const DayView: React.FC<DayViewProps> = ({ className }) => {
         </div>
         
         <div className="space-y-2">
-          {habits.length > 0 ? (
-            habits.map((habit) => (
+          {displayedHabits.length > 0 ? (
+            displayedHabits.map((habit) => (
               <div 
                 key={habit.id}
                 className={cn(

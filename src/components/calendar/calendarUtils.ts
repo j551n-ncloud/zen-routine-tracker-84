@@ -86,22 +86,19 @@ export const getSelectedDateData = (
     data.breaks = savedBreaks[formattedDate];
   }
 
-  // If this is today's date, try to get tasks from the task manager
-  if (date) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const selectedDate = new Date(date);
-    selectedDate.setHours(0, 0, 0, 0);
-    
-    try {
-      // Get tasks for the selected date
+  // Get tasks for the selected date
+  try {
+    if (date) {
       const tasksData = localStorage.getItem("zen-tracker-tasks");
       if (tasksData) {
         const allTasks = JSON.parse(tasksData);
         // Find tasks due on the selected date
         const tasksForDate = allTasks.filter((task: any) => {
+          if (!task.dueDate) return false;
           const taskDate = new Date(task.dueDate);
           taskDate.setHours(0, 0, 0, 0);
+          const selectedDate = new Date(date);
+          selectedDate.setHours(0, 0, 0, 0);
           return taskDate.getTime() === selectedDate.getTime();
         });
         
@@ -114,26 +111,40 @@ export const getSelectedDateData = (
           }));
         }
       }
-    } catch (error) {
-      console.error("Error getting tasks from localStorage:", error);
     }
+  } catch (error) {
+    console.error("Error getting tasks from localStorage:", error);
   }
 
-  // Import current habits and their completion status
+  // Get habits with their daily completion status
   try {
     const habitsData = localStorage.getItem("zen-tracker-habits");
+    const dailyHabitsData = localStorage.getItem("zen-tracker-daily-habits");
+    
     if (habitsData) {
       const allHabits = JSON.parse(habitsData);
-      // Add any habits not already in the data
-      const existingHabitIds = new Set(data.habits.map(h => h.id));
-      const habitsToAdd = allHabits.filter((h: any) => !existingHabitIds.has(h.id))
-        .map((h: any) => ({
-          id: h.id,
-          name: h.name,
-          completed: h.completed || false
-        }));
+      let dailyStatuses = {};
       
-      data.habits = [...data.habits, ...habitsToAdd];
+      if (dailyHabitsData) {
+        dailyStatuses = JSON.parse(dailyHabitsData);
+      }
+      
+      // Use the daily status for the selected date if available
+      const dailyStatus = formattedDate && dailyStatuses[formattedDate] 
+        ? dailyStatuses[formattedDate] 
+        : {};
+      
+      // Convert habits to the expected format with completion status for the selected date
+      const habitsForDate = allHabits.map((habit: any) => ({
+        id: habit.id,
+        name: habit.name,
+        completed: dailyStatus[habit.id] || false
+      }));
+      
+      // Only use these habits if we don't already have habits for this date
+      if (habitsForDate.length > 0 && !savedHabits[formattedDate]) {
+        data.habits = habitsForDate;
+      }
     }
   } catch (error) {
     console.error("Error getting habits from localStorage:", error);
