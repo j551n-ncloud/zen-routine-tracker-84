@@ -39,6 +39,11 @@ export function useDataStorage<T>(key: string, initialValue: T) {
           throw new Error(`Server responded with ${response.status}`);
         }
         
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error(`Expected JSON response but got ${contentType}`);
+        }
+        
         const data = await response.json();
         
         if (data) {

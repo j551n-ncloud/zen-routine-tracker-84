@@ -29,8 +29,8 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// GET endpoint to retrieve data by key
-app.get('/data/:key', (req, res) => {
+// API routes need to be prefixed with /api
+app.get('/api/data/:key', (req, res) => {
   try {
     const { key } = req.params;
     const filePath = path.join(DATA_DIR, `${key}.json`);
@@ -47,8 +47,8 @@ app.get('/data/:key', (req, res) => {
   }
 });
 
-// POST endpoint to save data
-app.post('/data/:key', (req, res) => {
+// API routes need to be prefixed with /api
+app.post('/api/data/:key', (req, res) => {
   try {
     const { key } = req.params;
     const { value } = req.body;
@@ -60,6 +60,20 @@ app.post('/data/:key', (req, res) => {
   } catch (error) {
     console.error('Error saving data:', error);
     return res.status(500).json({ error: 'Failed to save data' });
+  }
+});
+
+// Handle non-api routes for SPA - Redirect to index.html
+app.get('*', (req, res, next) => {
+  if (req.url.startsWith('/api/')) {
+    return next(); // Skip for API routes
+  }
+  
+  // For all other routes, respond with a message that API routes should use /api prefix
+  if (req.accepts('json')) {
+    res.status(404).json({ error: 'Not found. API routes should use /api prefix.' });
+  } else {
+    res.status(404).send('Not found. API routes should use /api prefix.');
   }
 });
 
