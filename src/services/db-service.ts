@@ -24,9 +24,9 @@ export const initDatabase = async (): Promise<void> => {
   
   initPromise = new Promise(async (resolve, reject) => {
     try {
-      console.log('Initializing database connection to SQLite API server');
+      console.log('Initializing database connection to SQLite REST API server');
       
-      // Test connection to SQLite REST API
+      // Test connection to jonamat/sqlite-rest API
       const response = await fetch(`${API_URL}/tables`);
       
       if (!response.ok) {
@@ -141,14 +141,14 @@ export const executeQuery = async <T>(
   await ensureDatabaseInitialized();
   
   try {
-    // For cloudware/sqlite-rest, we use the /execute endpoint with queries that return results
-    const response = await fetch(`${API_URL}/execute`, {
+    // For jonamat/sqlite-rest, we need to use the right endpoint format
+    const response = await fetch(`${API_URL}/query`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        sql: query,
+        query: query,
         params: params,
       }),
     });
@@ -159,7 +159,7 @@ export const executeQuery = async <T>(
     }
     
     const result = await response.json();
-    return result.rows || [];
+    return result.data || [];
   } catch (error) {
     console.error("Query execution error:", error, "Query:", query, "Params:", params);
     throw error;
@@ -174,14 +174,14 @@ export const executeWrite = async (
   await ensureDatabaseInitialized();
   
   try {
-    // For cloudware/sqlite-rest, we use the same /execute endpoint for writes
+    // For jonamat/sqlite-rest, use the execute endpoint for writes
     const response = await fetch(`${API_URL}/execute`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        sql: query,
+        query: query,
         params: params,
       }),
     });
