@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { RowDataPacket } from "mysql2";
+
+// Define interface for user count row
+interface UserCountRow extends RowDataPacket {
+  count: number;
+}
 
 // Define the form schema for user settings
 const userSettingsSchema = z.object({
@@ -70,7 +75,7 @@ const Settings = () => {
     setIsUpdatingUser(true);
     try {
       // Verify current password
-      const users = await executeQuery(
+      const users = await executeQuery<UserCountRow[]>(
         "SELECT COUNT(*) as count FROM users WHERE username = ? AND password = ?",
         [user?.username, values.currentPassword]
       );

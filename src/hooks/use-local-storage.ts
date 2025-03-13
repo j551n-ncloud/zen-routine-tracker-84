@@ -14,7 +14,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
         setIsLoading(true);
         console.log(`Loading data for key: ${key}`);
         
-        // Try to get from SQLite using our helper
+        // Try to get from database using our helper
         const data = await getData(key);
         
         if (data) {

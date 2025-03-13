@@ -1,7 +1,7 @@
-
 import mysql from 'mysql2/promise';
 import config from './api-config';
 import { toast } from 'sonner';
+import { RowDataPacket, OkPacket, ResultSetHeader } from 'mysql2';
 
 // Create a connection pool
 const pool = mysql.createPool({
@@ -77,9 +77,9 @@ async function initializeTables(connection) {
 }
 
 // Execute a query with parameters
-export async function executeQuery(sql, params = []) {
+export async function executeQuery<T extends RowDataPacket[]>(sql: string, params: any[] = []): Promise<T> {
   try {
-    const [results] = await pool.query(sql, params);
+    const [results] = await pool.query<T>(sql, params);
     return results;
   } catch (error) {
     console.error('Query execution error:', error);
@@ -88,15 +88,15 @@ export async function executeQuery(sql, params = []) {
 }
 
 // Get data from the key_value_store
-export async function getData(key) {
+export async function getData(key: string) {
   try {
-    const [rows] = await pool.query(
+    const [rows] = await pool.query<RowDataPacket[]>(
       'SELECT value_data FROM key_value_store WHERE key_name = ?',
       [key]
     );
     
     if (rows && Array.isArray(rows) && rows.length > 0 && rows[0].value_data) {
-      return JSON.parse(rows[0].value_data);
+      return JSON.parse(rows[0].value_data as string);
     }
     return null;
   } catch (error) {
@@ -121,7 +121,7 @@ export async function getData(key) {
 }
 
 // Save data to the key_value_store
-export async function saveData(key, value) {
+export async function saveData(key: string, value: any) {
   try {
     // Always store as JSON
     const jsonValue = JSON.stringify(value);
@@ -153,7 +153,7 @@ export async function saveData(key, value) {
 }
 
 // Delete data from the key_value_store
-export async function deleteData(key) {
+export async function deleteData(key: string) {
   try {
     await pool.query('DELETE FROM key_value_store WHERE key_name = ?', [key]);
     return true;

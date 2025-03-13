@@ -2,6 +2,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { getData, saveData, executeQuery } from '../services/db-service';
 import { toast } from 'sonner';
+import { RowDataPacket } from 'mysql2';
 
 // Define types
 export interface User {
@@ -15,6 +16,12 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
+}
+
+// Define row data interface for user query
+interface UserRow extends RowDataPacket {
+  username: string;
+  is_admin: number;
 }
 
 // Create the auth context
@@ -51,12 +58,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       // Validate credentials
-      const users = await executeQuery(
+      const users = await executeQuery<UserRow[]>(
         "SELECT username, is_admin FROM users WHERE username = ? AND password = ?",
         [username, password]
       );
       
-      if (!Array.isArray(users) || users.length === 0) {
+      if (!users || !Array.isArray(users) || users.length === 0) {
         toast.error("Invalid username or password");
         return false;
       }
