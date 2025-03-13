@@ -19,6 +19,7 @@ const DATA_DIR = path.join(__dirname, '../../data');
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+  console.log(`Created data directory at ${DATA_DIR}`);
 }
 
 // Reserved routes that should not be treated as data keys
@@ -49,6 +50,11 @@ app.use((req, res, next) => {
   req.url = ('/' + req.url.replace(/\/+/g, '/')).replace(/\/+$/, '');
   if (req.url === '') req.url = '/';
   
+  // Strip trailing slashes for consistency
+  if (req.url.length > 1 && req.url.endsWith('/')) {
+    req.url = req.url.slice(0, -1);
+  }
+  
   console.log(`Normalized URL: ${req.url}`);
   next();
 });
@@ -66,7 +72,7 @@ const handleDataGet = (req, res) => {
       console.log(`Data found for key: ${key}`);
       return res.json(JSON.parse(data));
     } else {
-      console.log(`No data found for key: ${key}`);
+      console.log(`No data found for key: ${key}, returning null`);
       return res.json(null);
     }
   } catch (error) {
@@ -88,6 +94,12 @@ const handleDataPost = (req, res) => {
     const filePath = path.join(DATA_DIR, `${key}.json`);
     
     console.log(`POST data for key: ${key}`);
+    
+    // Ensure the directory exists for nested paths
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
     
     fs.writeFileSync(filePath, JSON.stringify(value, null, 2));
     console.log(`Data saved for key: ${key}`);
@@ -113,7 +125,7 @@ app.post('/data/:key', handleDataPost);
 app.get('/api/data/:key', handleDataGet);
 app.post('/api/data/:key', handleDataPost);
 
-// 3. API routes without /data/ prefix (new format)
+// 3. API routes without /data/ prefix - IMPORTANT: These need to come before the catch-all routes
 app.get('/api/:key', (req, res, next) => {
   // Skip reserved routes like '/api/health'
   if (RESERVED_ROUTES.includes(req.params.key)) {
@@ -130,24 +142,24 @@ app.post('/api/:key', (req, res, next) => {
   handleDataPost(req, res);
 });
 
-// 4. Root level keys (/:key) - only for data keys, not for other routes
+// 4. Root level keys (/:key) - special handling for ZenTracker patterns
 // This needs to be at the end of the routes so it doesn't catch everything
 app.get('/:key', (req, res, next) => {
-  // Skip reserved routes like '/health' and avoid catching everything
-  if (RESERVED_ROUTES.includes(req.params.key)) {
+  const key = req.params.key;
+  
+  // Skip reserved routes
+  if (RESERVED_ROUTES.includes(key)) {
     return next();
   }
   
-  // Make sure this is actually a data key request, not some other route
-  const key = req.params.key;
+  // Check if it's a recognized pattern we should handle
+  const isRecognizedPattern = 
+    key.startsWith('zen-tracker-') || 
+    key.startsWith('calendar-') || 
+    key === 'habits' ||
+    key === 'tasks';
   
-  // Check if it's a common ZenTracker key pattern
-  const isZenTrackerKey = key.startsWith('zen-tracker-') || 
-                          key.startsWith('calendar-') || 
-                          key === 'habits' ||
-                          key === 'tasks';
-  
-  if (isZenTrackerKey) {
+  if (isRecognizedPattern) {
     handleDataGet(req, res);
   } else {
     // If it doesn't look like a data key, pass to the next handler
@@ -156,21 +168,21 @@ app.get('/:key', (req, res, next) => {
 });
 
 app.post('/:key', (req, res, next) => {
+  const key = req.params.key;
+  
   // Skip reserved routes
-  if (RESERVED_ROUTES.includes(req.params.key)) {
+  if (RESERVED_ROUTES.includes(key)) {
     return next();
   }
   
-  // Make sure this is actually a data key request, not some other route
-  const key = req.params.key;
+  // Check if it's a recognized pattern we should handle
+  const isRecognizedPattern = 
+    key.startsWith('zen-tracker-') || 
+    key.startsWith('calendar-') || 
+    key === 'habits' ||
+    key === 'tasks';
   
-  // Check if it's a common ZenTracker key pattern
-  const isZenTrackerKey = key.startsWith('zen-tracker-') || 
-                          key.startsWith('calendar-') || 
-                          key === 'habits' ||
-                          key === 'tasks';
-  
-  if (isZenTrackerKey) {
+  if (isRecognizedPattern) {
     handleDataPost(req, res);
   } else {
     // If it doesn't look like a data key, pass to the next handler

@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { fetchData, saveData } from "./api-utils";
+import { toast } from "sonner";
 
 export function useServerStorage<T>(key: string, initialValue: T) {
   // State to store our value
@@ -28,6 +29,9 @@ export function useServerStorage<T>(key: string, initialValue: T) {
         console.error('Error fetching data:', err);
         setError(err instanceof Error ? err : new Error(String(err)));
         setStoredValue(initialValue);
+        
+        // Show a toast notification for user feedback
+        toast.error("Failed to load data from server");
       } finally {
         setIsLoading(false);
       }
@@ -51,6 +55,9 @@ export function useServerStorage<T>(key: string, initialValue: T) {
     } catch (err) {
       console.error('Error saving data:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
+      
+      // Show a toast notification for user feedback
+      toast.error("Failed to save data to server");
     }
   };
 

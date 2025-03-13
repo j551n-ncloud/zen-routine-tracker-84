@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
-import { getApiBaseUrl, fetchData, saveData } from "./api-utils";
+import { fetchData, saveData } from "./api-utils";
+import { toast } from "sonner";
 
 export function useLocalStorage<T>(key: string, initialValue: T) {
   // State to store our value
@@ -36,11 +37,18 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       } catch (error) {
         console.error("Error syncing from server:", error);
         
+        // Don't show toast errors for server sync issues
+        // As it's a background operation and too noisy for users
+        
         // If server sync fails, fall back to local storage
         const savedItem = localStorage.getItem(key);
         if (savedItem) {
-          const parsedItem = JSON.parse(savedItem);
-          setStoredValue(parsedItem);
+          try {
+            const parsedItem = JSON.parse(savedItem);
+            setStoredValue(parsedItem);
+          } catch (parseError) {
+            console.error("Error parsing localStorage item:", parseError);
+          }
         }
       }
     };
@@ -66,10 +74,13 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
         // Send to server using our helper
         saveData(key, valueToStore).catch(error => {
           console.error("Error saving to server:", error);
+          // Don't show toast notifications for these errors
+          // as they can be noisy if the server is temporarily unavailable
         });
       }
     } catch (error) {
       console.error("Error writing to localStorage:", error);
+      toast.error("Failed to save data locally");
     }
   };
 
