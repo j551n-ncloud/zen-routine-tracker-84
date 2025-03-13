@@ -36,11 +36,22 @@ export function setMockMode(value: boolean): void {
   }
 }
 
-// Initialize the database - always use localStorage in browser
+// Initialize the database
 export async function initDatabase(): Promise<boolean> {
   // Always use local storage in browser environment
   if (isBrowser) {
-    console.log('Browser environment detected, using local storage');
+    console.log('Browser environment detected, enabling local storage mode');
+    
+    // Check if user has already seen the explanation about data not syncing
+    const hasSeenSyncMessage = localStorage.getItem('has-seen-sync-message');
+    if (!hasSeenSyncMessage) {
+      toast.info(
+        config.storage.persistenceInfo.message,
+        { duration: 8000 }
+      );
+      localStorage.setItem('has-seen-sync-message', 'true');
+    }
+    
     setMockMode(true);
     return true;
   }
