@@ -57,7 +57,7 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ className }) => {
     } catch (error) {
       console.error("Error loading habit completion data:", error);
     }
-  }, []);
+  }, [habits]); // Add habits as a dependency to refresh when habits change
   
   // Function to customize day rendering
   const customDayRender = (day: Date, isSelected: boolean) => {

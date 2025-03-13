@@ -52,14 +52,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   return (
     <div className="h-full w-64 bg-card border-r overflow-auto flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="font-semibold text-lg">Zen Tracker</h2>
-        <button 
-          onClick={onClose} 
-          className="p-1 rounded-full hover:bg-accent lg:hidden"
-        >
-          <X className="h-4 w-4" />
-        </button>
+      <div className="flex flex-col p-4 border-b">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-lg">Zen Tracker</h2>
+          <button 
+            onClick={onClose} 
+            className="p-1 rounded-full hover:bg-accent lg:hidden"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">created by Johannes Nguyen</p>
       </div>
       
       {/* Navigation Links */}

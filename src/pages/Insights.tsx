@@ -1,12 +1,11 @@
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, LineChart, Line, Legend
 } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AppLayout from "@/components/layout/AppLayout";
 import { useLocalStorage } from "@/hooks/use-local-storage";
@@ -33,6 +32,21 @@ const Insights = () => {
   
   const [selectedPeriod, setSelectedPeriod] = useState("Last 7 Days");
   const { theme } = useTheme();
+  
+  // Force refresh for real-time data
+  const [refresh, setRefresh] = useState(0);
+  
+  useEffect(() => {
+    // Refresh data when component mounts
+    setRefresh(prev => prev + 1);
+    
+    // Set up interval to check for new data
+    const interval = setInterval(() => {
+      setRefresh(prev => prev + 1);
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
   
   const isDarkMode = theme === "dark";
   const chartColors = isDarkMode ? DARK_MODE_COLORS : COLORS;
@@ -180,7 +194,7 @@ const Insights = () => {
       };
     });
     
-    // Get habit categories and count
+    // Get habit categories and count - use real-time data
     const habitCategoryMap: Record<string, number> = {};
     habitsData.forEach(habit => {
       if (!habit.category) return;
@@ -191,14 +205,14 @@ const Insights = () => {
     
     const habitCategoryData = Object.entries(habitCategoryMap).map(([name, value]) => ({ name, value }));
     
-    // Get streak data
+    // Get streak data - use real-time data
     const streakData = habitsData
       .sort((a, b) => b.streak - a.streak)
       .slice(0, 5)
       .map(habit => ({ name: habit.name, streak: habit.streak }));
     
     return { habitData, taskData, energyData, habitCategoryData, streakData };
-  }, [selectedPeriod, habitsData, tasksData, calendarTasks, calendarHabits, energyLevels]);
+  }, [selectedPeriod, habitsData, tasksData, calendarTasks, calendarHabits, energyLevels, refresh]);
 
   return (
     <AppLayout>
