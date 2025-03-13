@@ -1,0 +1,293 @@
+
+import React, { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  CheckCircle, 
+  Clock, 
+  Plus, 
+  Edit, 
+  Trash, 
+  AlertTriangle, 
+  ArrowUp, 
+  Circle, 
+  CalendarDays 
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+// Sample task data
+const initialTasks = [
+  {
+    id: 1,
+    title: 'Finish project presentation',
+    priority: 'high',
+    completed: false,
+    dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24), // tomorrow
+  },
+  {
+    id: 2,
+    title: 'Schedule team meeting',
+    priority: 'medium',
+    completed: false,
+    dueDate: new Date(Date.now() + 1000 * 60 * 60 * 48), // day after tomorrow
+  },
+  {
+    id: 3,
+    title: 'Review weekly metrics',
+    priority: 'low',
+    completed: true,
+    dueDate: new Date(), // today
+  },
+  {
+    id: 4,
+    title: 'Send client proposal',
+    priority: 'high',
+    completed: false,
+    dueDate: new Date(Date.now() - 1000 * 60 * 60 * 24), // yesterday (overdue)
+  },
+  {
+    id: 5,
+    title: 'Research new tools',
+    priority: 'medium',
+    completed: false,
+    dueDate: new Date(Date.now() + 1000 * 60 * 60 * 72), // 3 days from now
+  },
+];
+
+// Upcoming tasks (for the "Upcoming" tab)
+const upcomingTasks = [
+  {
+    id: 6,
+    title: 'Quarterly planning session',
+    priority: 'high',
+    completed: false,
+    dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 1 week from now
+  },
+  {
+    id: 7,
+    title: 'Update documentation',
+    priority: 'medium',
+    completed: false,
+    dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5), // 5 days from now
+  },
+  {
+    id: 8,
+    title: 'Release schedule review',
+    priority: 'low',
+    completed: false,
+    dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 10), // 10 days from now
+  },
+];
+
+// Priority badge component
+const PriorityBadge = ({ priority }: { priority: string }) => {
+  const getColor = () => {
+    switch (priority) {
+      case 'high':
+        return 'bg-red-100 text-red-600';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-600';
+      case 'low':
+        return 'bg-blue-100 text-blue-600';
+      default:
+        return 'bg-gray-100 text-gray-600';
+    }
+  };
+
+  const getIcon = () => {
+    switch (priority) {
+      case 'high':
+        return <ArrowUp className="w-3 h-3" />;
+      case 'medium':
+        return <Circle className="w-3 h-3" />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <span 
+      className={cn(
+        "inline-flex items-center text-xs rounded-full px-2 py-0.5 font-medium",
+        getColor()
+      )}
+    >
+      {getIcon()}
+      <span className="ml-1 capitalize">{priority}</span>
+    </span>
+  );
+};
+
+const TaskManager: React.FC = () => {
+  const [tasks, setTasks] = useState(initialTasks);
+  const [activeTab, setActiveTab] = useState('today');
+
+  const toggleTaskCompletion = (id: number) => {
+    setTasks(tasks.map(task => 
+      task.id === id ? { ...task, completed: !task.completed } : task
+    ));
+  };
+
+  const formatDate = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const taskDate = new Date(date);
+    taskDate.setHours(0, 0, 0, 0);
+    
+    if (taskDate.getTime() === today.getTime()) return 'Today';
+    if (taskDate.getTime() === tomorrow.getTime()) return 'Tomorrow';
+    
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric'
+    });
+  };
+
+  const isOverdue = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const taskDate = new Date(date);
+    taskDate.setHours(0, 0, 0, 0);
+    
+    return taskDate < today && !isToday(date);
+  };
+
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
+  const getActiveTasks = () => {
+    if (activeTab === 'upcoming') {
+      return upcomingTasks;
+    }
+    return tasks;
+  };
+
+  return (
+    <Card className="shadow-subtle overflow-hidden">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <div className="flex justify-between items-center px-4 pt-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="today">Today</TabsTrigger>
+            <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+          </TabsList>
+          <button className="rounded-full p-1.5 bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+
+        <CardContent className="p-0">
+          <TabsContent value="today" className="m-0">
+            <div className="divide-y">
+              {tasks.map(task => (
+                <div 
+                  key={task.id}
+                  className={cn(
+                    "flex items-center justify-between p-4 group hover:bg-muted/30 transition-colors",
+                    task.completed && "opacity-60"
+                  )}
+                >
+                  <div className="flex items-center space-x-3 flex-1">
+                    <button
+                      onClick={() => toggleTaskCompletion(task.id)}
+                      className={cn(
+                        "rounded-full flex-shrink-0 flex items-center justify-center w-6 h-6 transition-all",
+                        task.completed 
+                          ? "bg-primary/20 text-primary" 
+                          : "border border-muted-foreground/30 text-transparent hover:border-primary hover:text-primary"
+                      )}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <p className={cn(
+                        "text-sm font-medium truncate", 
+                        task.completed && "line-through text-muted-foreground"
+                      )}>
+                        {task.title}
+                      </p>
+                      <div className="flex items-center mt-0.5 space-x-2">
+                        <PriorityBadge priority={task.priority} />
+                        <span 
+                          className={cn(
+                            "text-xs flex items-center",
+                            isOverdue(task.dueDate) && !task.completed 
+                              ? "text-red-500" 
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          {isOverdue(task.dueDate) && !task.completed && (
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                          )}
+                          <Clock className="h-3 w-3 mr-1" />
+                          {formatDate(task.dueDate)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-accent">
+                      <Edit className="h-4 w-4" />
+                    </button>
+                    <button className="text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-accent">
+                      <Trash className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="upcoming" className="m-0">
+            <div className="divide-y">
+              {upcomingTasks.map(task => (
+                <div 
+                  key={task.id}
+                  className="flex items-center justify-between p-4 group hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-center space-x-3 flex-1">
+                    <div className="w-6 h-6 flex items-center justify-center">
+                      <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">
+                        {task.title}
+                      </p>
+                      <div className="flex items-center mt-0.5 space-x-2">
+                        <PriorityBadge priority={task.priority} />
+                        <span className="text-xs flex items-center text-muted-foreground">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {formatDate(task.dueDate)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-accent">
+                      <Edit className="h-4 w-4" />
+                    </button>
+                    <button className="text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-accent">
+                      <Trash className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+        </CardContent>
+      </Tabs>
+    </Card>
+  );
+};
+
+export default TaskManager;
