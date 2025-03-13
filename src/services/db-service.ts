@@ -1,24 +1,12 @@
 
 import { toast } from "sonner";
-
-// Base URL for the SQLite API - dynamically detect the right endpoint
-const API_URL = (() => {
-  // Check if we're in a browser environment (not Node.js)
-  if (typeof window !== 'undefined') {
-    // In production Docker environment, the SQLite service is available on the internal network
-    // In development or preview environment, use the relative URL to avoid CORS issues
-    return import.meta.env.VITE_DATABASE_URL || '/api';
-  }
-  // Default fallback
-  return 'http://localhost:3000';
-})();
-
-console.log('Using database API URL:', API_URL);
+import initSqlJs from 'sql.js';
 
 // Initialize flag
 let isInitialized = false;
 let isInitializing = false;
 let initPromise: Promise<void> | null = null;
+let db: any = null;
 
 // Function to initialize the database
 export const initDatabase = async (): Promise<void> => {
@@ -35,19 +23,18 @@ export const initDatabase = async (): Promise<void> => {
   
   initPromise = new Promise(async (resolve, reject) => {
     try {
-      console.log('Initializing database connection to SQLite REST API server');
+      console.log('Initializing SQL.js database');
       
-      // Test connection to b4fun/sqlite-rest API
-      const response = await fetch(`${API_URL}/api/tables`);
+      // Initialize SQL.js
+      const SQL = await initSqlJs({
+        // Specify location of wasm file
+        locateFile: file => `/${file}`
+      });
       
-      if (!response.ok) {
-        throw new Error(`Failed to connect to SQLite REST API: ${response.statusText}`);
-      }
+      // Create a new database
+      db = new SQL.Database();
       
-      const tables = await response.json();
-      console.log('Connected to SQLite REST API successfully, available tables:', tables);
-      
-      // Ensure our required tables exist
+      // Create tables
       await createTables();
       
       isInitialized = true;
@@ -152,25 +139,23 @@ export const executeQuery = async <T>(
   await ensureDatabaseInitialized();
   
   try {
-    // For b4fun/sqlite-rest API
-    const response = await fetch(`${API_URL}/api/query`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        q: query,
-        args: params,
-      }),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Query execution failed: ${errorText}`);
+    // Replace ? with actual values (simple implementation)
+    let finalQuery = query;
+    if (params.length > 0) {
+      params.forEach((param) => {
+        finalQuery = finalQuery.replace('?', typeof param === 'string' ? `'${param}'` : String(param));
+      });
     }
     
-    const result = await response.json();
-    return result.rows || [];
+    const stmt = db.prepare(finalQuery);
+    const results: T[] = [];
+    
+    while (stmt.step()) {
+      results.push(stmt.getAsObject());
+    }
+    
+    stmt.free();
+    return results;
   } catch (error) {
     console.error("Query execution error:", error, "Query:", query, "Params:", params);
     throw error;
@@ -185,22 +170,15 @@ export const executeWrite = async (
   await ensureDatabaseInitialized();
   
   try {
-    // For b4fun/sqlite-rest API
-    const response = await fetch(`${API_URL}/api/execute`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        q: query,
-        args: params,
-      }),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Write operation failed: ${errorText}`);
+    // Replace ? with actual values (simple implementation)
+    let finalQuery = query;
+    if (params.length > 0) {
+      params.forEach((param) => {
+        finalQuery = finalQuery.replace('?', typeof param === 'string' ? `'${param}'` : String(param));
+      });
     }
+    
+    db.run(finalQuery);
   } catch (error) {
     console.error("Write operation error:", error, "Query:", query, "Params:", params);
     throw error;
@@ -211,6 +189,60 @@ export const executeWrite = async (
 const ensureDatabaseInitialized = async (): Promise<void> => {
   if (!isInitialized) {
     await initDatabase();
+  }
+};
+
+// Function to save the database to localStorage
+export const saveDatabaseToStorage = (): void => {
+  if (!db) return;
+  
+  try {
+    const data = db.export();
+    const buffer = new Uint8Array(data);
+    const blob = new Blob([buffer]);
+    
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = function() {
+      if (typeof reader.result === 'string') {
+        localStorage.setItem('zentracker-database', reader.result);
+        console.log('Database saved to localStorage');
+      }
+    };
+    reader.readAsDataURL(blob);
+  } catch (error) {
+    console.error('Failed to save database to localStorage:', error);
+  }
+};
+
+// Function to load the database from localStorage
+export const loadDatabaseFromStorage = async (): Promise<boolean> => {
+  try {
+    const data = localStorage.getItem('zentracker-database');
+    if (!data) return false;
+    
+    // Convert from base64
+    const binary = atob(data.split(',')[1]);
+    const array = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      array[i] = binary.charCodeAt(i);
+    }
+    
+    // Initialize SQL.js if needed
+    if (!db) {
+      const SQL = await initSqlJs({
+        locateFile: file => `/${file}`
+      });
+      db = new SQL.Database(array);
+      isInitialized = true;
+      console.log('Database loaded from localStorage');
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Failed to load database from localStorage:', error);
+    return false;
   }
 };
 
@@ -257,6 +289,9 @@ export const saveData = async <T>(key: string, value: T): Promise<void> => {
         [key, valueJson]
       );
     }
+    
+    // Save database to localStorage after write operations
+    saveDatabaseToStorage();
   } catch (error) {
     console.error(`Error saving data for key '${key}':`, error);
     throw error;
