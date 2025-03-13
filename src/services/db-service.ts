@@ -19,11 +19,11 @@ export const initDatabase = async (): Promise<void> => {
   
   initPromise = new Promise(async (resolve, reject) => {
     try {
-      // Initialize SQL.js
+      // Initialize SQL.js with explicit path to wasm file
       console.log("Initializing SQL.js");
       SQL = await initSqlJs({
-        // Locate the wasm file
-        locateFile: file => `https://sql.js.org/dist/${file}`
+        // Use a CDN URL for the WASM file to avoid Node.js path resolution issues
+        locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
       });
       
       // Load existing database from localStorage or create a new one
