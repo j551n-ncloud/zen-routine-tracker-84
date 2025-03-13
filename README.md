@@ -1,4 +1,3 @@
-
 # Welcome to your Lovable project
 
 ## Project info
@@ -52,7 +51,7 @@ docker-compose up -d
 docker-compose down
 ```
 
-The application will be available at http://localhost, with Nginx proxying requests to the frontend and backend services.
+The application will be available at http://localhost:89, with Nginx proxying requests to the frontend and backend services.
 
 **Edit a file directly in GitHub**
 
