@@ -1,14 +1,16 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, ClipboardList, Battery, Coffee } from "lucide-react";
+import { CheckCircle2, ClipboardList, Battery, Coffee, X as XIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
 
-// Sample task and habit data for the calendar
 const sampleData = {
   "2023-07-15": {
     tasks: [
@@ -39,22 +41,82 @@ const sampleData = {
 const CalendarPage = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState("tasks");
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [energyLevel, setEnergyLevel] = useState(0);
+  const [breaks, setBreaks] = useState<string[]>([]);
+  const [newBreak, setNewBreak] = useState("");
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [habits, setHabits] = useState<any[]>([]);
   
-  // Get energy levels and breaks from localStorage or use defaults
-  const [savedEnergyLevels] = useLocalStorage("energy-levels", {});
-  const [savedBreaks] = useLocalStorage("breaks", {});
+  const [savedEnergyLevels, setSavedEnergyLevels] = useLocalStorage("energy-levels", {});
+  const [savedBreaks, setSavedBreaks] = useLocalStorage("breaks", {});
+  const [savedTasks, setSavedTasks] = useLocalStorage("tasks", {});
+  const [savedHabits, setSavedHabits] = useLocalStorage("habits", {});
   
-  // Format date as YYYY-MM-DD to match our sample data keys
   const formattedDate = date ? 
     `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : 
     "";
   
-  // Get data for the selected date
   const selectedDateData = sampleData[formattedDate] || { 
-    tasks: [], 
-    habits: [],
+    tasks: savedTasks[formattedDate] || [], 
+    habits: savedHabits[formattedDate] || [],
     energy: savedEnergyLevels[formattedDate] || 0,
     breaks: savedBreaks[formattedDate] || []
+  };
+
+  const openEditDialog = () => {
+    setEnergyLevel(selectedDateData.energy);
+    setBreaks(selectedDateData.breaks || []);
+    setTasks(selectedDateData.tasks || []);
+    setHabits(selectedDateData.habits || []);
+    setIsEditDialogOpen(true);
+  };
+
+  const saveChanges = () => {
+    const updatedEnergyLevels = { ...savedEnergyLevels };
+    updatedEnergyLevels[formattedDate] = energyLevel;
+    setSavedEnergyLevels(updatedEnergyLevels);
+
+    const updatedBreaks = { ...savedBreaks };
+    updatedBreaks[formattedDate] = breaks;
+    setSavedBreaks(updatedBreaks);
+
+    const updatedTasks = { ...savedTasks };
+    updatedTasks[formattedDate] = tasks;
+    setSavedTasks(updatedTasks);
+
+    const updatedHabits = { ...savedHabits };
+    updatedHabits[formattedDate] = habits;
+    setSavedHabits(updatedHabits);
+
+    setIsEditDialogOpen(false);
+    toast.success("Calendar data updated successfully");
+  };
+
+  const addBreak = () => {
+    if (newBreak) {
+      setBreaks([...breaks, newBreak]);
+      setNewBreak("");
+    }
+  };
+
+  const removeBreak = (index: number) => {
+    const updatedBreaks = breaks.filter((_, i) => i !== index);
+    setBreaks(updatedBreaks);
+  };
+
+  const toggleTaskCompletion = (taskId: number) => {
+    const updatedTasks = tasks.map(task => 
+      task.id === taskId ? { ...task, completed: !task.completed } : task
+    );
+    setTasks(updatedTasks);
+  };
+
+  const toggleHabitCompletion = (habitId: number) => {
+    const updatedHabits = habits.map(habit => 
+      habit.id === habitId ? { ...habit, completed: !habit.completed } : habit
+    );
+    setHabits(updatedHabits);
   };
   
   return (
@@ -62,6 +124,9 @@ const CalendarPage = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
+          <Button variant="outline" onClick={openEditDialog}>
+            Edit Day
+          </Button>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -104,7 +169,7 @@ const CalendarPage = () => {
                   </TabsList>
                   
                   <TabsContent value="tasks" className="mt-0">
-                    {selectedDateData.tasks.length > 0 ? (
+                    {selectedDateData.tasks && selectedDateData.tasks.length > 0 ? (
                       <div className="space-y-2">
                         {selectedDateData.tasks.map(task => (
                           <div 
@@ -132,7 +197,7 @@ const CalendarPage = () => {
                   </TabsContent>
                   
                   <TabsContent value="habits" className="mt-0">
-                    {selectedDateData.habits.length > 0 ? (
+                    {selectedDateData.habits && selectedDateData.habits.length > 0 ? (
                       <div className="space-y-2">
                         {selectedDateData.habits.map(habit => (
                           <div 
@@ -162,7 +227,6 @@ const CalendarPage = () => {
               </CardContent>
             </Card>
             
-            {/* Energy and Break Summary */}
             <Card className="shadow-subtle">
               <CardHeader>
                 <CardTitle className="text-sm flex items-center">
@@ -213,6 +277,125 @@ const CalendarPage = () => {
             </Card>
           </div>
         </div>
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Edit Day</DialogTitle>
+              <DialogDescription>
+                Update information for {date?.toLocaleDateString()}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Energy Level (0-10)</h4>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  value={energyLevel}
+                  onChange={(e) => setEnergyLevel(parseInt(e.target.value))}
+                  className="w-full"
+                />
+                <div className="text-right text-sm">{energyLevel}/10</div>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Break Times</h4>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newBreak}
+                    onChange={(e) => setNewBreak(e.target.value)}
+                    placeholder="e.g. 10:30 AM"
+                    className="flex-1 px-3 py-2 border rounded-md text-sm"
+                  />
+                  <Button onClick={addBreak} size="sm">Add</Button>
+                </div>
+                
+                {breaks.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {breaks.map((breakTime, index) => (
+                      <div key={index} className="flex items-center justify-between bg-accent/50 px-3 py-2 rounded-md">
+                        <span className="text-sm">{breakTime}</span>
+                        <button
+                          onClick={() => removeBreak(index)}
+                          className="text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <XIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-2 text-muted-foreground">
+                    <p className="text-sm">No breaks added</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Tasks</h4>
+                {tasks.length > 0 ? (
+                  <div className="space-y-2">
+                    {tasks.map(task => (
+                      <div key={task.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`task-${task.id}`}
+                          checked={task.completed}
+                          onCheckedChange={() => toggleTaskCompletion(task.id)}
+                        />
+                        <label
+                          htmlFor={`task-${task.id}`}
+                          className={`text-sm ${task.completed ? 'line-through text-muted-foreground' : ''}`}
+                        >
+                          {task.title}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-2 text-muted-foreground">
+                    <p className="text-sm">No tasks for this date</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Habits</h4>
+                {habits.length > 0 ? (
+                  <div className="space-y-2">
+                    {habits.map(habit => (
+                      <div key={habit.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`habit-${habit.id}`}
+                          checked={habit.completed}
+                          onCheckedChange={() => toggleHabitCompletion(habit.id)}
+                        />
+                        <label
+                          htmlFor={`habit-${habit.id}`}
+                          className={`text-sm ${habit.completed ? 'line-through text-muted-foreground' : ''}`}
+                        >
+                          {habit.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-2 text-muted-foreground">
+                    <p className="text-sm">No habits for this date</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+              <Button onClick={saveChanges}>Save changes</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
