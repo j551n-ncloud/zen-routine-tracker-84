@@ -20,6 +20,7 @@ services:
       - NODE_ENV=production
       - VITE_BASE_URL=/
       - VITE_SQLITE_REST_URL=http://sqlite-rest:8080
+      - VITE_SQLITE_DATABASE=/data/zentracker.db
     restart: unless-stopped
     networks:
       - zentracker_network

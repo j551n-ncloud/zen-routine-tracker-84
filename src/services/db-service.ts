@@ -1,6 +1,7 @@
 
 import { toast } from 'sonner';
 import axios from 'axios';
+import config from './api-config';
 
 // Type definitions for different responses from the database
 export interface KeyValueData {
@@ -15,7 +16,8 @@ export interface CountResult {
 let mockMode = false;
 
 // SQLite REST API configuration
-const SQLITE_REST_BASE_URL = import.meta.env.VITE_SQLITE_REST_URL || 'http://localhost:8080';
+const SQLITE_REST_BASE_URL = config.sqliteRest.url;
+const SQLITE_DATABASE = config.sqliteRest.database;
 
 // Detect if running in browser environment
 const isBrowser = typeof window !== 'undefined';
@@ -44,7 +46,8 @@ async function sqliteRestQuery<T>(sql: string, params: any[] = []): Promise<T> {
   try {
     const response = await axios.post(`${SQLITE_REST_BASE_URL}/exec`, {
       sql,
-      params
+      params,
+      db: SQLITE_DATABASE
     });
     
     // SQLite REST returns results in a specific format
@@ -153,10 +156,83 @@ export async function initDatabase(): Promise<boolean> {
     // Test the SQLite REST API connection with a simple query
     await sqliteRestQuery('SELECT 1');
     console.log('Successfully connected to SQLite REST API');
+    
+    // Create necessary tables if they don't exist
+    await setupDatabase();
+    
     return true;
   } catch (error) {
     console.error('Failed to connect to SQLite REST API:', error);
     setMockMode(true);
+    throw error;
+  }
+}
+
+// Setup the database with necessary tables
+async function setupDatabase(): Promise<void> {
+  try {
+    // Create key_value_store table
+    await sqliteRestQuery(`
+      CREATE TABLE IF NOT EXISTS key_value_store (
+        key_name TEXT PRIMARY KEY,
+        value_data TEXT
+      )
+    `);
+    
+    // Create users table
+    await sqliteRestQuery(`
+      CREATE TABLE IF NOT EXISTS users (
+        username TEXT PRIMARY KEY,
+        password TEXT NOT NULL,
+        is_admin INTEGER DEFAULT 0
+      )
+    `);
+    
+    // Create default admin user if it doesn't exist
+    const users = await sqliteRestQuery<any[]>('SELECT username FROM users WHERE username = ?', ['admin']);
+    if (!users || users.length === 0) {
+      await sqliteRestQuery(
+        'INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)',
+        ['admin', 'admin', 1]
+      );
+    }
+    
+    // Create other necessary tables (habits, tasks, etc.)
+    await sqliteRestQuery(`
+      CREATE TABLE IF NOT EXISTS habits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        streak INTEGER DEFAULT 0,
+        completed INTEGER DEFAULT 0,
+        category TEXT,
+        icon TEXT
+      )
+    `);
+    
+    await sqliteRestQuery(`
+      CREATE TABLE IF NOT EXISTS daily_habits (
+        date TEXT,
+        habit_id INTEGER,
+        completed INTEGER DEFAULT 0,
+        PRIMARY KEY (date, habit_id),
+        FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+      )
+    `);
+    
+    await sqliteRestQuery(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        priority TEXT,
+        completed INTEGER DEFAULT 0,
+        start_date TEXT,
+        due_date TEXT NOT NULL
+      )
+    `);
+    
+    console.log('Database setup completed');
+  } catch (error) {
+    console.error('Database setup error:', error);
     throw error;
   }
 }
