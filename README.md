@@ -1,3 +1,4 @@
+
 # Welcome to your Lovable project
 
 ## Project info
@@ -53,38 +54,107 @@ docker-compose down
 
 The application will be available at http://localhost:89, with Nginx proxying requests to the frontend and backend services.
 
-**Edit a file directly in GitHub**
+## Deploying with Cloudflare Tunnels
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+This application consists of two main components that need to be properly routed:
+1. Frontend (React application)
+2. Backend API (Express server)
 
-**Use GitHub Codespaces**
+### Required Port Configuration
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+When setting up Cloudflare Tunnels, you need to configure the following:
 
-## What technologies are used for this project?
+1. **Public Hostname for Frontend**:
+   - Service: `http://localhost:89`
+   - This routes to your frontend application
 
-This project is built with:
+2. **Public Hostname for API**:
+   - Service: `http://localhost:3001`
+   - Path: `/api/*` or `/data/*`
+   - This routes API requests to your backend
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-- Express (Backend API)
-- Nginx (Reverse Proxy)
-- Docker & Docker Compose
+### Step-by-Step Cloudflare Tunnels Setup
 
-## How can I deploy this project?
+1. **Install Cloudflared**:
+   ```bash
+   # On Ubuntu/Debian
+   wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+   sudo dpkg -i cloudflared-linux-amd64.deb
+   
+   # On macOS with Homebrew
+   brew install cloudflare/cloudflare/cloudflared
+   ```
 
-Simply open [Lovable](https://lovable.dev/projects/2168413d-0709-4542-8c9d-07fd99900810) and click on Share -> Publish.
+2. **Authenticate Cloudflared**:
+   ```bash
+   cloudflared tunnel login
+   ```
 
-For Docker deployment, you can build and run the Docker images on any platform that supports Docker.
+3. **Create a Tunnel**:
+   ```bash
+   cloudflared tunnel create my-habit-app
+   ```
+
+4. **Configure Your Tunnel**:
+   Create a config file at `~/.cloudflared/config.yml`:
+   ```yaml
+   tunnel: <YOUR_TUNNEL_ID>
+   credentials-file: /path/to/credentials-file.json
+   
+   ingress:
+     # Route API requests to the backend
+     - hostname: api.yourdomain.com
+       service: http://localhost:3001
+     
+     # Route frontend requests
+     - hostname: yourdomain.com
+       service: http://localhost:89
+     
+     # Catch-all rule for handling other subdomains
+     - service: http_status:404
+   ```
+
+5. **Start the Tunnel**:
+   ```bash
+   cloudflared tunnel run
+   ```
+
+6. **DNS Configuration**:
+   ```bash
+   cloudflared tunnel route dns <TUNNEL_NAME> yourdomain.com
+   cloudflared tunnel route dns <TUNNEL_NAME> api.yourdomain.com
+   ```
+
+### Alternative Configuration (Single Domain)
+
+If you prefer to use a single domain, you can use path-based routing:
+
+```yaml
+ingress:
+  # Route API requests to the backend
+  - hostname: yourdomain.com
+    path: /api/*
+    service: http://localhost:3001
+  
+  # Route frontend requests
+  - hostname: yourdomain.com
+    service: http://localhost:89
+  
+  # Catch-all
+  - service: http_status:404
+```
+
+### Important Notes for Cloudflare Tunnels
+
+1. **Path Handling**: The backend server has been configured to handle various path formats, including those with and without leading slashes.
+
+2. **CORS Configuration**: The server is configured to allow requests from any origin for development purposes. For production, consider limiting this to your domain.
+
+3. **Logging**: The server outputs detailed logs that can help with debugging any routing issues.
+
+4. **Data Directory**: The application stores data in a `/data` directory. When deploying, ensure this directory is persisted and has proper permissions.
+
+5. **SSL/TLS**: Cloudflare Tunnels automatically handle SSL/TLS, so you don't need to configure certificates on your server.
 
 ## I want to use a custom domain - is that possible?
 
