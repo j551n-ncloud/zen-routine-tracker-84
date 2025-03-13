@@ -1,12 +1,17 @@
 
-const express = require('express');
-const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
-const bodyParser = require('body-parser');
+import express from 'express';
+import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
+import bodyParser from 'body-parser';
+import { fileURLToPath } from 'url';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Get the directory name using ES modules approach
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Data directory for storing JSON files
 const DATA_DIR = path.join(__dirname, '../../data');

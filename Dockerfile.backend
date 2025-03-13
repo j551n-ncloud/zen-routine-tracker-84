@@ -17,5 +17,5 @@ RUN mkdir -p data
 # Expose the backend port
 EXPOSE 3001
 
-# Start the server
+# Start the server with explicit node ES module flag
 CMD ["node", "src/server/server.js"]
