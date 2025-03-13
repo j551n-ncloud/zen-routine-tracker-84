@@ -11,3 +11,10 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=production
+      - VITE_BASE_URL=/
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

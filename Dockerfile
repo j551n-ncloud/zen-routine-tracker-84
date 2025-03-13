@@ -17,5 +17,5 @@ RUN npm run build
 # Expose the port
 EXPOSE 8080
 
-# Start the application
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "8080"]
+# Start the application with proper error logging
+CMD ["sh", "-c", "NODE_ENV=production npm run preview -- --host 0.0.0.0 --port 8080"]
