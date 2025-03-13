@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -12,6 +12,9 @@ import AppLayout from "@/components/layout/AppLayout";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Activity, BarChart2, PieChart as PieChartIcon, LineChart as LineChartIcon } from "lucide-react";
 import { useTheme } from "@/providers/theme-provider";
+import { formatDate } from "@/components/calendar/calendarUtils";
+import { format, subDays, parseISO, isWithinInterval } from "date-fns";
+import { Habit } from "@/hooks/use-habits-storage";
 
 // Sample colors
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
@@ -21,14 +24,100 @@ const DARK_MODE_COLORS = ["#61dafb", "#2ecc71", "#f1c40f", "#e74c3c", "#9b59b6"]
 const TIME_PERIODS = ["Last 7 Days", "Last 30 Days", "Last 90 Days"];
 
 const Insights = () => {
-  const [habitData] = useLocalStorage("zen-tracker-habits", []);
-  const [tasksData] = useLocalStorage("zen-tracker-tasks", []);
-  const [energyLevels] = useLocalStorage("energy-levels", {});
+  const [habitsData] = useLocalStorage<Habit[]>("zen-tracker-habits", []);
+  const [tasksData] = useLocalStorage<any[]>("zen-tracker-tasks", []);
+  const [energyLevels] = useLocalStorage<Record<string, number>>("energy-levels", {});
+  const [calendarTasks] = useLocalStorage<Record<string, any[]>>("calendar-tasks", {});
+  const [calendarHabits] = useLocalStorage<Record<string, any[]>>("calendar-habits", {});
+  const [dailyHabits] = useLocalStorage<Record<string, Record<string, boolean>>>("zen-tracker-daily-habits", {});
+  
   const [selectedPeriod, setSelectedPeriod] = useState("Last 7 Days");
   const { theme } = useTheme();
   
   const isDarkMode = theme === "dark";
   const chartColors = isDarkMode ? DARK_MODE_COLORS : COLORS;
+
+  // Get date range based on selected period
+  const getDateRange = () => {
+    const endDate = new Date();
+    let startDate;
+    
+    switch (selectedPeriod) {
+      case "Last 7 Days":
+        startDate = subDays(endDate, 7);
+        break;
+      case "Last 30 Days":
+        startDate = subDays(endDate, 30);
+        break;
+      case "Last 90 Days":
+        startDate = subDays(endDate, 90);
+        break;
+      default:
+        startDate = subDays(endDate, 7);
+    }
+    
+    return { startDate, endDate };
+  };
+
+  // Generate array of date keys in the selected range
+  const getDateKeysInRange = () => {
+    const { startDate, endDate } = getDateRange();
+    const dateKeys = [];
+    
+    let currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      dateKeys.push(formatDate(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return dateKeys;
+  };
+
+  // Filter data by date range
+  const getFilteredData = () => {
+    const { startDate, endDate } = getDateRange();
+    const dateRange = { start: startDate, end: endDate };
+    
+    // Filter calendar data
+    const filteredTasks: Record<string, any[]> = {};
+    const filteredHabits: Record<string, any[]> = {};
+    const filteredEnergy: Record<string, number> = {};
+    
+    Object.entries(calendarTasks).forEach(([date, tasks]) => {
+      try {
+        const dateObj = parseISO(date);
+        if (isWithinInterval(dateObj, dateRange)) {
+          filteredTasks[date] = tasks;
+        }
+      } catch (e) {
+        console.error("Invalid date format", date);
+      }
+    });
+    
+    Object.entries(calendarHabits).forEach(([date, habits]) => {
+      try {
+        const dateObj = parseISO(date);
+        if (isWithinInterval(dateObj, dateRange)) {
+          filteredHabits[date] = habits;
+        }
+      } catch (e) {
+        console.error("Invalid date format", date);
+      }
+    });
+    
+    Object.entries(energyLevels).forEach(([date, energy]) => {
+      try {
+        const dateObj = parseISO(date);
+        if (isWithinInterval(dateObj, dateRange)) {
+          filteredEnergy[date] = energy;
+        }
+      } catch (e) {
+        console.error("Invalid date format", date);
+      }
+    });
+    
+    return { filteredTasks, filteredHabits, filteredEnergy };
+  };
 
   // Custom tooltip with dark mode support
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -47,56 +136,69 @@ const Insights = () => {
     return null;
   };
 
-  // Prepare habit completion data
-  const habitCompletionData = [
-    { name: "Mon", completed: 4, total: 5 },
-    { name: "Tue", completed: 3, total: 5 },
-    { name: "Wed", completed: 5, total: 5 },
-    { name: "Thu", completed: 2, total: 5 },
-    { name: "Fri", completed: 3, total: 5 },
-    { name: "Sat", completed: 4, total: 5 },
-    { name: "Sun", completed: 1, total: 5 },
-  ];
-
-  // Prepare task completion data
-  const taskCompletionData = [
-    { name: "Mon", completed: 7, total: 10, completionRate: 70 },
-    { name: "Tue", completed: 5, total: 8, completionRate: 63 },
-    { name: "Wed", completed: 9, total: 12, completionRate: 75 },
-    { name: "Thu", completed: 4, total: 6, completionRate: 67 },
-    { name: "Fri", completed: 6, total: 9, completionRate: 67 },
-    { name: "Sat", completed: 3, total: 5, completionRate: 60 },
-    { name: "Sun", completed: 2, total: 4, completionRate: 50 },
-  ];
-
-  // Prepare habit category distribution
-  const habitCategoryData = [
-    { name: "Health", value: 5 },
-    { name: "Fitness", value: 3 },
-    { name: "Learning", value: 4 },
-    { name: "Sleep", value: 2 },
-    { name: "Mindfulness", value: 3 },
-  ];
-
-  // Prepare energy level data
-  const energyLevelData = [
-    { name: "Mon", value: 7 },
-    { name: "Tue", value: 5 },
-    { name: "Wed", value: 8 },
-    { name: "Thu", value: 6 },
-    { name: "Fri", value: 4 },
-    { name: "Sat", value: 9 },
-    { name: "Sun", value: 7 },
-  ];
-
-  // Streak data
-  const streakData = [
-    { name: "Drink Water", streak: 12 },
-    { name: "Exercise", streak: 5 },
-    { name: "Read Book", streak: 8 },
-    { name: "8h Sleep", streak: 3 },
-    { name: "Meditation", streak: 15 },
-  ];
+  // Generate chart data based on real user data
+  const generateChartData = useMemo(() => {
+    const { filteredTasks, filteredHabits, filteredEnergy } = getFilteredData();
+    const dateKeys = getDateKeysInRange();
+    
+    // Initialize data for each day in range with default values
+    const habitData = dateKeys.map(date => {
+      const shortDay = new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
+      const habits = filteredHabits[date] || [];
+      const completedHabits = habits.filter((h: any) => h.completed).length;
+      
+      return {
+        name: shortDay,
+        date,
+        completed: completedHabits,
+        total: habits.length || 0,
+      };
+    });
+    
+    const taskData = dateKeys.map(date => {
+      const shortDay = new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
+      const tasks = filteredTasks[date] || [];
+      const completedTasks = tasks.filter((t: any) => t.completed).length;
+      const totalTasks = tasks.length;
+      const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+      
+      return {
+        name: shortDay,
+        date,
+        completed: completedTasks,
+        total: totalTasks,
+        completionRate: Math.round(completionRate),
+      };
+    });
+    
+    const energyData = dateKeys.map(date => {
+      const shortDay = new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
+      return {
+        name: shortDay,
+        date,
+        value: filteredEnergy[date] || 0,
+      };
+    });
+    
+    // Get habit categories and count
+    const habitCategoryMap: Record<string, number> = {};
+    habitsData.forEach(habit => {
+      if (!habit.category) return;
+      
+      const category = habit.category.charAt(0).toUpperCase() + habit.category.slice(1);
+      habitCategoryMap[category] = (habitCategoryMap[category] || 0) + 1;
+    });
+    
+    const habitCategoryData = Object.entries(habitCategoryMap).map(([name, value]) => ({ name, value }));
+    
+    // Get streak data
+    const streakData = habitsData
+      .sort((a, b) => b.streak - a.streak)
+      .slice(0, 5)
+      .map(habit => ({ name: habit.name, streak: habit.streak }));
+    
+    return { habitData, taskData, energyData, habitCategoryData, streakData };
+  }, [selectedPeriod, habitsData, tasksData, calendarTasks, calendarHabits, energyLevels]);
 
   return (
     <AppLayout>
@@ -147,7 +249,7 @@ const Insights = () => {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={habitCompletionData}>
+                    <BarChart data={generateChartData.habitData}>
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis />
@@ -167,7 +269,7 @@ const Insights = () => {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={taskCompletionData}>
+                    <BarChart data={generateChartData.taskData}>
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis />
@@ -189,7 +291,7 @@ const Insights = () => {
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
-                        data={habitCategoryData}
+                        data={generateChartData.habitCategoryData}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -198,7 +300,7 @@ const Insights = () => {
                         dataKey="value"
                         label={({name, percent}) => `${name} (${(percent * 100).toFixed(0)}%)`}
                       >
-                        {habitCategoryData.map((entry, index) => (
+                        {generateChartData.habitCategoryData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                         ))}
                       </Pie>
@@ -215,7 +317,7 @@ const Insights = () => {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={energyLevelData}>
+                    <LineChart data={generateChartData.energyData}>
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis domain={[0, 10]} />
@@ -244,7 +346,7 @@ const Insights = () => {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={streakData} layout="vertical">
+                    <BarChart data={generateChartData.streakData} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis type="number" />
                       <YAxis dataKey="name" type="category" width={100} />
@@ -262,7 +364,7 @@ const Insights = () => {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={habitCompletionData}>
+                    <LineChart data={generateChartData.habitData}>
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis />
@@ -297,7 +399,7 @@ const Insights = () => {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={taskCompletionData}>
+                    <LineChart data={generateChartData.taskData}>
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis />
@@ -328,7 +430,7 @@ const Insights = () => {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={taskCompletionData}>
+                    <BarChart data={generateChartData.taskData}>
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis domain={[0, 100]} />
@@ -354,7 +456,7 @@ const Insights = () => {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={energyLevelData}>
+                    <LineChart data={generateChartData.energyData}>
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis domain={[0, 10]} />
@@ -378,7 +480,7 @@ const Insights = () => {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={energyLevelData}>
+                    <LineChart data={generateChartData.energyData}>
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis yAxisId="left" domain={[0, 10]} />
@@ -392,14 +494,16 @@ const Insights = () => {
                         stroke={isDarkMode ? "#A78BFA" : "#8884d8"} 
                         name="Energy Level"
                       />
-                      <Line 
-                        yAxisId="right"
-                        type="monotone" 
-                        dataKey="completed" 
-                        stroke={isDarkMode ? "#60A5FA" : "#3b82f6"} 
-                        name="Tasks Completed"
-                        data={taskCompletionData}
-                      />
+                      {generateChartData.taskData.length > 0 && (
+                        <Line 
+                          yAxisId="right"
+                          type="monotone" 
+                          dataKey="completed" 
+                          stroke={isDarkMode ? "#60A5FA" : "#3b82f6"} 
+                          name="Tasks Completed"
+                          data={generateChartData.taskData}
+                        />
+                      )}
                     </LineChart>
                   </ResponsiveContainer>
                 </CardContent>
