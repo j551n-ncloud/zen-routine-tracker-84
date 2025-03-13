@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { getApiBaseUrl } from "./api-utils";
+import { fetchData, saveData } from "./api-utils";
 
 export function useServerStorage<T>(key: string, initialValue: T) {
   // State to store our value
@@ -10,25 +10,13 @@ export function useServerStorage<T>(key: string, initialValue: T) {
 
   // Load data from API on initial mount
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDataFromServer = async () => {
       try {
         setIsLoading(true);
-        const apiBaseUrl = getApiBaseUrl();
-        console.log(`Fetching data from: ${apiBaseUrl}/${key}`);
+        console.log(`Fetching data from server for key: ${key}`);
         
-        // Fetch from server
-        const response = await fetch(`${apiBaseUrl}/${key}`);
-        
-        if (!response.ok) {
-          throw new Error(`Server responded with ${response.status}`);
-        }
-        
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error(`Expected JSON response but got ${contentType}`);
-        }
-        
-        const data = await response.json();
+        // Fetch from server using our helper
+        const data = await fetchData<T>(key);
         
         if (data) {
           setStoredValue(data);
@@ -45,7 +33,7 @@ export function useServerStorage<T>(key: string, initialValue: T) {
       }
     };
 
-    fetchData();
+    fetchDataFromServer();
   }, [key, initialValue]);
 
   // Function to save data to the server
@@ -58,21 +46,8 @@ export function useServerStorage<T>(key: string, initialValue: T) {
       // Save state
       setStoredValue(valueToStore);
       
-      const apiBaseUrl = getApiBaseUrl();
-      console.log(`Saving data to: ${apiBaseUrl}/${key}`);
-      
-      // Save to server
-      const response = await fetch(`${apiBaseUrl}/${key}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ value: valueToStore }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}`);
-      }
+      // Save to server using our helper
+      await saveData(key, valueToStore);
     } catch (err) {
       console.error('Error saving data:', err);
       setError(err instanceof Error ? err : new Error(String(err)));

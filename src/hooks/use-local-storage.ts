@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { getApiBaseUrl } from "./api-utils";
+import { getApiBaseUrl, fetchData, saveData } from "./api-utils";
 
 export function useLocalStorage<T>(key: string, initialValue: T) {
   // State to store our value
@@ -24,21 +24,9 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     // Sync with server when the component mounts
     const syncFromServer = async () => {
       try {
-        const apiBaseUrl = getApiBaseUrl();
-        console.log(`Syncing from server: ${apiBaseUrl}/${key}`);
-        // Try to get from server
-        const response = await fetch(`${apiBaseUrl}/${key}`);
-        
-        if (!response.ok) {
-          throw new Error(`Server responded with ${response.status}`);
-        }
-        
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error(`Expected JSON response but got ${contentType}`);
-        }
-        
-        const data = await response.json();
+        console.log(`Syncing from server for key: ${key}`);
+        // Try to get from server using our helper
+        const data = await fetchData<T>(key);
         
         if (data) {
           setStoredValue(data);
@@ -75,16 +63,8 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       if (typeof window !== "undefined") {
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
         
-        // Send to server
-        const apiBaseUrl = getApiBaseUrl();
-        console.log(`Saving to server: ${apiBaseUrl}/${key}`);
-        fetch(`${apiBaseUrl}/${key}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ value: valueToStore }),
-        }).catch(error => {
+        // Send to server using our helper
+        saveData(key, valueToStore).catch(error => {
           console.error("Error saving to server:", error);
         });
       }

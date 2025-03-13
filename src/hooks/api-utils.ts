@@ -1,4 +1,3 @@
-
 // Define the API base URL with correct path prefix for all API requests
 export const getApiBaseUrl = (): string => {
   // For production environments
@@ -26,9 +25,12 @@ export const getApiBaseUrl = (): string => {
 // Helper function to make data requests
 export const fetchData = async <T>(key: string): Promise<T | null> => {
   const apiBaseUrl = getApiBaseUrl();
-  console.log(`Fetching data from: ${apiBaseUrl}/${key}`);
   
-  const response = await fetch(`${apiBaseUrl}/${key}`);
+  // Ensure the key matches patterns recognized by the server
+  const formattedKey = ensureValidKey(key);
+  console.log(`Fetching data from: ${apiBaseUrl}/${formattedKey}`);
+  
+  const response = await fetch(`${apiBaseUrl}/${formattedKey}`);
   
   if (!response.ok) {
     throw new Error(`Server responded with ${response.status}`);
@@ -45,9 +47,12 @@ export const fetchData = async <T>(key: string): Promise<T | null> => {
 // Helper function to save data
 export const saveData = async <T>(key: string, value: T): Promise<void> => {
   const apiBaseUrl = getApiBaseUrl();
-  console.log(`Saving data to: ${apiBaseUrl}/${key}`);
   
-  const response = await fetch(`${apiBaseUrl}/${key}`, {
+  // Ensure the key matches patterns recognized by the server
+  const formattedKey = ensureValidKey(key);
+  console.log(`Saving data to: ${apiBaseUrl}/${formattedKey}`);
+  
+  const response = await fetch(`${apiBaseUrl}/${formattedKey}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -58,4 +63,22 @@ export const saveData = async <T>(key: string, value: T): Promise<void> => {
   if (!response.ok) {
     throw new Error(`Server responded with ${response.status}`);
   }
+};
+
+// Helper function to ensure keys match the patterns recognized by the server
+const ensureValidKey = (key: string): string => {
+  // These are the key formats the server recognizes in routes.js
+  const isRecognizedPattern = 
+    key.startsWith('zen-tracker-') || 
+    key.startsWith('calendar-') || 
+    key === 'habits' || 
+    key === 'tasks';
+  
+  // If it's already a recognized pattern, return as is
+  if (isRecognizedPattern) {
+    return key;
+  }
+  
+  // Otherwise, prefix with 'data/' to use the more permissive route
+  return `data/${key}`;
 };
