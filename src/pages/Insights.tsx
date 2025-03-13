@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -37,13 +36,13 @@ const Insights = () => {
 
   // Prepare task completion data
   const taskCompletionData = [
-    { name: "Mon", completed: 7, total: 10 },
-    { name: "Tue", completed: 5, total: 8 },
-    { name: "Wed", completed: 9, total: 12 },
-    { name: "Thu", completed: 4, total: 6 },
-    { name: "Fri", completed: 6, total: 9 },
-    { name: "Sat", completed: 3, total: 5 },
-    { name: "Sun", completed: 2, total: 4 },
+    { name: "Mon", completed: 7, total: 10, completionRate: 70 },
+    { name: "Tue", completed: 5, total: 8, completionRate: 63 },
+    { name: "Wed", completed: 9, total: 12, completionRate: 75 },
+    { name: "Thu", completed: 4, total: 6, completionRate: 67 },
+    { name: "Fri", completed: 6, total: 9, completionRate: 67 },
+    { name: "Sat", completed: 3, total: 5, completionRate: 60 },
+    { name: "Sun", completed: 2, total: 4, completionRate: 50 },
   ];
 
   // Prepare habit category distribution
@@ -266,7 +265,6 @@ const Insights = () => {
           </TabsContent>
           
           <TabsContent value="tasks" className="mt-0">
-            {/* Task insights content */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card className="shadow-subtle">
                 <CardHeader>
@@ -312,14 +310,9 @@ const Insights = () => {
                       <YAxis domain={[0, 100]} />
                       <Tooltip />
                       <Bar 
-                        dataKey="completed" 
+                        dataKey="completionRate" 
                         fill="#3b82f6" 
                         name="Completion Rate (%)"
-                        // Use name property instead of formatter
-                        format={(value, index) => {
-                          const { completed, total } = taskCompletionData[index];
-                          return Math.round((completed / total) * 100);
-                        }}
                       />
                     </BarChart>
                   </ResponsiveContainer>
@@ -329,7 +322,6 @@ const Insights = () => {
           </TabsContent>
           
           <TabsContent value="energy" className="mt-0">
-            {/* Energy insights content */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card className="shadow-subtle">
                 <CardHeader>
