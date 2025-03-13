@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useHabitsStorage, Habit } from "@/hooks/use-habits-storage";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Sample habit categories and their associated icons
 const habitCategories = [
@@ -100,6 +101,11 @@ const HabitTracker: React.FC = () => {
     toast.success("Habit deleted successfully");
   };
 
+  const handleToggleCompletion = (habitId: number, isCompleted: boolean) => {
+    toggleHabit(habitId);
+    toast.success(`Habit marked as ${isCompleted ? 'not completed' : 'completed'}`);
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -113,7 +119,7 @@ const HabitTracker: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <button
-                    onClick={() => toggleHabit(habit.id)}
+                    onClick={() => handleToggleCompletion(habit.id, habit.completed)}
                     className={cn(
                       "h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300",
                       habit.completed 
@@ -121,7 +127,11 @@ const HabitTracker: React.FC = () => {
                         : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"
                     )}
                   >
-                    <IconComponent className="h-5 w-5" />
+                    {habit.completed ? (
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <IconComponent className="h-5 w-5" />
+                    )}
                   </button>
                   <div>
                     <h3 className="font-medium">{habit.name}</h3>
@@ -132,6 +142,12 @@ const HabitTracker: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id={`habit-${habit.id}`}
+                    checked={habit.completed}
+                    onCheckedChange={() => handleToggleCompletion(habit.id, habit.completed)}
+                    className="mr-1"
+                  />
                   <button 
                     onClick={() => openEditHabitDialog(habit)}
                     className="p-1.5 rounded-full text-muted-foreground hover:bg-muted transition-colors"
@@ -273,6 +289,17 @@ const HabitTracker: React.FC = () => {
                     streak: parseInt(e.target.value) || 0
                   })}
                 />
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox 
+                  id="edit-completed"
+                  checked={editingHabit.completed}
+                  onCheckedChange={(checked) => setEditingHabit({
+                    ...editingHabit, 
+                    completed: checked as boolean
+                  })}
+                />
+                <Label htmlFor="edit-completed" className="text-sm">Mark as completed</Label>
               </div>
             </div>
           )}
