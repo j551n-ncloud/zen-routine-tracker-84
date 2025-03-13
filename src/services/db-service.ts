@@ -1,20 +1,16 @@
 
-import mysql, { Pool } from 'mysql2/promise';
+import mysql, { Pool, QueryResult, RowDataPacket, OkPacket, ResultSetHeader } from 'mysql2/promise';
 import config from './api-config';
 import { toast } from 'sonner';
-import { RowDataPacket, OkPacket, ResultSetHeader } from 'mysql2';
 
 // Define a global variable to hold the connection pool
 let pool: Pool | null = null;
 
-// Check if we're in a browser environment
-const isBrowser = typeof window !== 'undefined';
-
-// Initialize mock mode (will be true in browser environments)
-let mockMode = isBrowser;
+// Initialize mock mode (disabled by default)
+let mockMode = false;
 
 // Console log the environment for debugging
-console.log(`Running in ${isBrowser ? 'browser' : 'server'} environment, mock mode: ${mockMode}`);
+console.log(`Running in ${typeof window !== 'undefined' ? 'browser' : 'server'} environment, mock mode: ${mockMode}`);
 
 // Create a connection pool if not in mock mode
 function getPool() {
@@ -67,9 +63,7 @@ export async function initDatabase() {
     return true;
   } catch (error) {
     console.error('Failed to initialize database:', error);
-    console.log('Falling back to mock mode');
-    mockMode = true;
-    return false;
+    throw error;
   }
 }
 
@@ -127,6 +121,11 @@ async function initializeTables(connection) {
   }
 }
 
+// Interface for key-value data
+interface KeyValueRow extends RowDataPacket {
+  value_data: string;
+}
+
 // Execute a query with parameters
 export async function executeQuery<T extends RowDataPacket[]>(sql: string, params: any[] = []): Promise<T> {
   try {
@@ -146,11 +145,6 @@ export async function executeQuery<T extends RowDataPacket[]>(sql: string, param
     console.error('Query execution error:', error);
     throw error;
   }
-}
-
-// Interface for key-value data
-interface KeyValueRow extends RowDataPacket {
-  value_data: string;
 }
 
 // Get data from the key_value_store
@@ -181,28 +175,13 @@ export async function getData(key: string) {
       [key]
     );
     
-    if (rows && Array.isArray(rows) && rows.length > 0 && rows[0].value_data) {
+    if (rows && Array.isArray(rows) && rows.length > 0 && rows[0]?.value_data) {
       return JSON.parse(rows[0].value_data as string);
     }
     return null;
   } catch (error) {
     console.error(`Error getting data for key ${key}:`, error);
-    
-    // Fall back to localStorage if database fails
-    try {
-      const data = localStorage.getItem(`zentracker-${key}`);
-      if (data) {
-        try {
-          return JSON.parse(data);
-        } catch (e) {
-          return data;
-        }
-      }
-    } catch (e) {
-      console.error('LocalStorage fallback failed:', e);
-    }
-    
-    return null;
+    throw error;
   }
 }
 
@@ -233,15 +212,6 @@ export async function saveData(key: string, value: any) {
     return true;
   } catch (error) {
     console.error(`Error saving data for key ${key}:`, error);
-    
-    // Fall back to localStorage if database fails
-    try {
-      localStorage.setItem(`zentracker-${key}`, JSON.stringify(value));
-      return true;
-    } catch (e) {
-      console.error('LocalStorage fallback failed:', e);
-    }
-    
     throw error;
   }
 }
@@ -265,15 +235,6 @@ export async function deleteData(key: string) {
     return true;
   } catch (error) {
     console.error(`Error deleting data for key ${key}:`, error);
-    
-    // Fall back to localStorage if database fails
-    try {
-      localStorage.removeItem(`zentracker-${key}`);
-      return true;
-    } catch (e) {
-      console.error('LocalStorage fallback failed:', e);
-    }
-    
     throw error;
   }
 }

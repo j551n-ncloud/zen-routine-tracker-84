@@ -80,7 +80,7 @@ const Settings = () => {
         [user?.username, values.currentPassword]
       );
       
-      if (!Array.isArray(users) || users.length === 0 || users[0].count === 0) {
+      if (!users || users.length === 0 || users[0]?.count === 0) {
         toast.error("Current password is incorrect");
         setIsUpdatingUser(false);
         return;

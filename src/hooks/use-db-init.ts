@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { initDatabase, setMockMode, isMockMode } from '../services/db-service';
+import { toast } from 'sonner';
 
 export function useDbInit() {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -17,19 +18,6 @@ export function useDbInit() {
     
     if (storedMockMode) {
       console.log('Mock database mode is enabled from localStorage');
-      setMockMode(true);
-      
-      if (isMounted) {
-        setIsInitialized(true);
-        setIsLoading(false);
-        setError(null);
-      }
-      return;
-    }
-    
-    // For browser environments, automatically enable mock mode
-    if (typeof window !== 'undefined') {
-      console.log('Browser environment detected, enabling mock mode');
       setMockMode(true);
       
       if (isMounted) {
@@ -58,6 +46,7 @@ export function useDbInit() {
           // Auto-enable mock mode after all retries fail
           if (retryCount >= MAX_RETRIES) {
             console.log('Max retries reached, enabling mock mode');
+            toast.error("Could not connect to database. Enabling offline mode.");
             setMockMode(true);
             setIsInitialized(true);
             setError(null);

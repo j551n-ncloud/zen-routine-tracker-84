@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         [username, password]
       );
       
-      if (!users || !Array.isArray(users) || users.length === 0) {
+      if (!users || users.length === 0) {
         toast.error("Invalid username or password");
         return false;
       }
