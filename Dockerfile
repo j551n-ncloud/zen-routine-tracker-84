@@ -1,8 +1,8 @@
 
 FROM node:18-alpine
 
-# Install dependencies for SQLite
-RUN apk add --no-cache python3 make g++ wget
+# Install dependencies for SQLite and nginx
+RUN apk add --no-cache python3 make g++ wget nginx
 
 # Create app directory
 WORKDIR /app
@@ -18,6 +18,10 @@ RUN mkdir -p public && \
     wget -O public/sql-wasm.wasm https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.wasm || \
     echo "Warning: Could not download sql-wasm.wasm"
 
+# Setup nginx config
+RUN mkdir -p /etc/nginx
+COPY nginx.conf /etc/nginx/nginx.conf
+
 # Copy project files
 COPY . .
 
@@ -28,11 +32,15 @@ RUN npm run build
 RUN ls -la ./dist || true
 RUN cp -v public/sql-wasm.wasm dist/ 2>/dev/null || echo "sql-wasm.wasm not copied to dist/"
 
-# Set proper WASM MIME type for caddy server
+# Set proper WASM MIME type for nginx
 RUN echo 'application/wasm wasm' > /app/dist/mime.types
+
+# Create start script
+RUN echo '#!/bin/sh\nnginx -g "daemon off;" &\ncd dist && NODE_ENV=production npx serve -s . -l 8080' > /app/start.sh
+RUN chmod +x /app/start.sh
 
 # Expose the port
 EXPOSE 8080
 
-# Start the application with proper error logging and network binding
-CMD ["sh", "-c", "cd dist && NODE_ENV=production npx serve -s . -l 8080"]
+# Start nginx and the application
+CMD ["/app/start.sh"]
