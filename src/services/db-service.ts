@@ -24,6 +24,12 @@ const WASM_SOURCES = [
   'https://sql.js.org/dist/sql-wasm.wasm'
 ];
 
+// IndexedDB database name and store constants
+const IDB_NAME = 'zentracker-db';
+const IDB_VERSION = 1;
+const IDB_STORE_NAME = 'sqlitedb';
+const IDB_KEY_NAME = 'db';
+
 // Function to download the WASM file from a URL and save it as a blob
 async function downloadWasmFile(url: string): Promise<ArrayBuffer | null> {
   try {
@@ -60,6 +66,87 @@ async function downloadWasmFile(url: string): Promise<ArrayBuffer | null> {
     return null;
   }
 }
+
+// Function to open the IndexedDB database
+const openIndexedDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(IDB_NAME, IDB_VERSION);
+    
+    request.onerror = (event) => {
+      console.error('Failed to open IndexedDB:', event);
+      reject(new Error('Failed to open IndexedDB'));
+    };
+    
+    request.onsuccess = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      resolve(db);
+    };
+    
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(IDB_STORE_NAME)) {
+        db.createObjectStore(IDB_STORE_NAME);
+      }
+    };
+  });
+};
+
+// Function to load the database from IndexedDB
+const loadDbFromIndexedDB = async (): Promise<Uint8Array | null> => {
+  try {
+    const idb = await openIndexedDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = idb.transaction([IDB_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(IDB_STORE_NAME);
+      const request = store.get(IDB_KEY_NAME);
+      
+      request.onerror = () => {
+        console.error('Error reading from IndexedDB');
+        reject(new Error('Error reading from IndexedDB'));
+      };
+      
+      request.onsuccess = () => {
+        const data = request.result;
+        if (data) {
+          resolve(new Uint8Array(data));
+        } else {
+          resolve(null);
+        }
+        idb.close();
+      };
+    });
+  } catch (error) {
+    console.error('Error accessing IndexedDB:', error);
+    return null;
+  }
+};
+
+// Function to save the database to IndexedDB
+const saveDbToIndexedDB = async (data: Uint8Array): Promise<void> => {
+  try {
+    const idb = await openIndexedDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = idb.transaction([IDB_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(IDB_STORE_NAME);
+      const request = store.put(data, IDB_KEY_NAME);
+      
+      request.onerror = () => {
+        console.error('Error writing to IndexedDB');
+        reject(new Error('Error writing to IndexedDB'));
+      };
+      
+      request.onsuccess = () => {
+        resolve();
+        idb.close();
+      };
+    });
+  } catch (error) {
+    console.error('Error accessing IndexedDB for saving:', error);
+    throw error;
+  }
+};
 
 // Function to initialize the database
 export const initDatabase = async (): Promise<void> => {
@@ -115,23 +202,16 @@ export const initDatabase = async (): Promise<void> => {
         throw new Error('Failed to initialize SQL.js. Please check your internet connection and try again.');
       }
       
-      // Load existing database from localStorage or create a new one
-      const savedDbData = localStorage.getItem('zentracker-db');
+      // Try to load existing database from IndexedDB
+      const savedDbData = await loadDbFromIndexedDB();
       
       if (savedDbData) {
         try {
-          // Convert base64 string back to Uint8Array
-          const binary = atob(savedDbData);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i);
-          }
-          
-          // Open the database
-          db = new SQL.Database(bytes);
-          console.log("Database loaded from localStorage");
+          // Open the database with the saved data
+          db = new SQL.Database(savedDbData);
+          console.log("Database loaded from IndexedDB");
         } catch (loadError) {
-          console.error("Failed to load database from localStorage, creating new:", loadError);
+          console.error("Failed to load database from IndexedDB, creating new:", loadError);
           db = new SQL.Database();
           createTables();
         }
@@ -213,25 +293,17 @@ const createTables = () => {
   console.log("Database tables created");
 };
 
-// Save the database to localStorage
-export const saveDatabase = () => {
+// Save the database to IndexedDB
+export const saveDatabase = async () => {
   if (!db) return;
   
   try {
     // Export the database to a Uint8Array
     const data = db.export();
     
-    // Convert Uint8Array to base64 string for storage
-    let binary = '';
-    const bytes = new Uint8Array(data);
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    
-    // Save to localStorage
-    localStorage.setItem('zentracker-db', btoa(binary));
-    console.log("Database saved to localStorage");
+    // Save to IndexedDB
+    await saveDbToIndexedDB(data);
+    console.log("Database saved to IndexedDB");
   } catch (error) {
     console.error("Failed to save database:", error);
     toast.error("Failed to save database. Your changes may not persist.");
@@ -258,8 +330,8 @@ export const executeQuery = async <T>(
     
     statement.free();
     
-    // Save changes to localStorage
-    saveDatabase();
+    // Save changes to IndexedDB
+    await saveDatabase();
     
     return results;
   } catch (error) {
@@ -283,8 +355,8 @@ export const executeWrite = async (
     statement.step();
     statement.free();
     
-    // Save changes to localStorage
-    saveDatabase();
+    // Save changes to IndexedDB
+    await saveDatabase();
   } catch (error) {
     console.error("Write operation error:", error, "Query:", query, "Params:", params);
     throw error;
