@@ -8,7 +8,7 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   base: "/", // Ensure base path is correctly set
   server: {
-    host: "0.0.0.0",
+    host: true, // Listen on all addresses
     port: 8080,
     cors: true,
     allowedHosts: [
@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => ({
     ],
   },
   preview: {
-    host: "0.0.0.0",
+    host: true, // Listen on all addresses
     port: 8080,
   },
   plugins: [
