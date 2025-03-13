@@ -26,15 +26,15 @@ export const initDatabase = async (): Promise<void> => {
     try {
       console.log('Initializing database connection to SQLite API server');
       
-      // Test connection to SQLite API
+      // Test connection to SQLite REST API
       const response = await fetch(`${API_URL}/tables`);
       
       if (!response.ok) {
-        throw new Error(`Failed to connect to SQLite API: ${response.statusText}`);
+        throw new Error(`Failed to connect to SQLite REST API: ${response.statusText}`);
       }
       
       const tables = await response.json();
-      console.log('Connected to SQLite API successfully, available tables:', tables);
+      console.log('Connected to SQLite REST API successfully, available tables:', tables);
       
       // Ensure our required tables exist
       await createTables();
@@ -141,16 +141,14 @@ export const executeQuery = async <T>(
   await ensureDatabaseInitialized();
   
   try {
-    // Replace ? with $1, $2, etc. for SQLite API
-    const parameterizedQuery = query.replace(/\?/g, (match, index) => `$${index + 1}`);
-    
-    const response = await fetch(`${API_URL}/query`, {
+    // For cloudware/sqlite-rest, we use the /execute endpoint with queries that return results
+    const response = await fetch(`${API_URL}/execute`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        query: parameterizedQuery,
+        sql: query,
         params: params,
       }),
     });
@@ -161,7 +159,7 @@ export const executeQuery = async <T>(
     }
     
     const result = await response.json();
-    return result as T[];
+    return result.rows || [];
   } catch (error) {
     console.error("Query execution error:", error, "Query:", query, "Params:", params);
     throw error;
@@ -176,16 +174,14 @@ export const executeWrite = async (
   await ensureDatabaseInitialized();
   
   try {
-    // Replace ? with $1, $2, etc. for SQLite API
-    const parameterizedQuery = query.replace(/\?/g, (match, index) => `$${index + 1}`);
-    
+    // For cloudware/sqlite-rest, we use the same /execute endpoint for writes
     const response = await fetch(`${API_URL}/execute`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        query: parameterizedQuery,
+        sql: query,
         params: params,
       }),
     });

@@ -33,11 +33,11 @@ services:
       start_period: 10s
 
   sqlite:
-    image: penyojs/sqlite-api
+    image: cloudware/sqlite-rest
     volumes:
       - sqlite_data:/data
     environment:
-      - DB_FILENAME=/data/zentracker.db
+      - DB_PATH=/data/zentracker.db
     # Removed the public port mapping so it's only accessible within the network
     networks:
       - zentracker_network
