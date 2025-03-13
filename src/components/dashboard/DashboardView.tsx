@@ -1,68 +1,26 @@
 
 import React from "react";
-import { Link } from "react-router-dom";
-import HabitTracker from "../habits/HabitTracker";
-import FocusToday from "../tasks/FocusToday";
-import TaskManager from "../tasks/TaskManager";
-import EnergyTracker from "../tasks/EnergyTracker";
-import { useIsMobile } from "@/hooks/use-mobile";
+import HabitsWidget from "./HabitsWidget";
+import FocusToday from "@/components/tasks/FocusToday";
+import TaskManager from "@/components/tasks/TaskManager";
+import EnergyTracker from "@/components/tasks/EnergyTracker";
 
 const DashboardView: React.FC = () => {
-  const isMobile = useIsMobile();
-
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">Today</h1>
-        <p className="text-muted-foreground mt-1">
-          {new Date().toLocaleDateString("en-US", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </p>
-      </header>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+      </div>
 
-      <div className={`grid gap-6 ${isMobile ? "" : "grid-cols-12"}`}>
-        {/* Main Column */}
-        <div className={`space-y-6 ${isMobile ? "" : "col-span-8"}`}>
-          {/* Habit Streaks */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-medium">Habit Streaks</h2>
-              <Link to="/habits" className="text-sm text-primary font-medium hover:underline">
-                View All
-              </Link>
-            </div>
-            <HabitTracker />
-          </section>
-
-          {/* Task Manager */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-medium">Tasks</h2>
-              <Link to="/tasks" className="text-sm text-primary font-medium hover:underline">
-                View All
-              </Link>
-            </div>
-            <TaskManager />
-          </section>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <FocusToday />
+          <TaskManager />
         </div>
-
-        {/* Side Column */}
-        <div className={`space-y-6 ${isMobile ? "" : "col-span-4"}`}>
-          {/* Focus Today */}
-          <section className="space-y-4">
-            <h2 className="text-xl font-medium">Focus Today</h2>
-            <FocusToday />
-          </section>
-
-          {/* Energy Tracker */}
-          <section className="space-y-4">
-            <h2 className="text-xl font-medium">Energy Tracker</h2>
-            <EnergyTracker />
-          </section>
+        
+        <div className="space-y-6">
+          <HabitsWidget />
+          <EnergyTracker />
         </div>
       </div>
     </div>
