@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Calendar } from "@/components/ui/calendar";
 import AppLayout from "@/components/layout/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, ClipboardList, Edit } from "lucide-react";
+import { CheckCircle2, ClipboardList, Edit, Clock, BarChart, CalendarIcon } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -16,10 +16,13 @@ import EditDialog from "@/components/calendar/EditDialog";
 import { formatDate, getSelectedDateData } from "@/components/calendar/calendarUtils";
 import { useTasksStorage } from "@/hooks/use-tasks-storage";
 import { useHabitsStorage } from "@/hooks/use-habits-storage";
+import { Separator } from "@/components/ui/separator";
+import Timeline from "@/components/calendar/Timeline";
 
 const CalendarPage = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState("tasks");
+  const [timelineTab, setTimelineTab] = useState("daily");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [energyLevel, setEnergyLevel] = useState(0);
   const [breaks, setBreaks] = useState<string[]>([]);
@@ -46,6 +49,22 @@ const CalendarPage = () => {
     savedEnergyLevels,
     savedBreaks
   );
+
+  // Get all dates with data for the timeline
+  const getAllDatesWithData = () => {
+    const allDates = new Set<string>();
+    
+    // Collect all dates from different data sources
+    Object.keys(savedTasks).forEach(date => allDates.add(date));
+    Object.keys(savedHabits).forEach(date => allDates.add(date));
+    Object.keys(savedEnergyLevels).forEach(date => allDates.add(date));
+    Object.keys(dailyFocus).forEach(date => allDates.add(date));
+    Object.keys(dailyPriorities).forEach(date => allDates.add(date));
+    
+    // Convert to array and sort by date (most recent first)
+    return Array.from(allDates)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  };
 
   const [focusForToday, setFocusForToday] = useLocalStorage("focus-for-today", "");
   const [priorities, setPriorities] = useLocalStorage("top-3-priorities", []);
@@ -175,102 +194,157 @@ const CalendarPage = () => {
             Edit Day
           </Button>
         </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <Card className="shadow-subtle">
-              <CardContent className="p-6">
-                <Calendar 
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  className="rounded-md pointer-events-auto"
-                />
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="space-y-6">
+
+        <Tabs defaultValue="calendar">
+          <TabsList className="mb-4">
+            <TabsTrigger value="calendar">
+              <CalendarIcon className="h-4 w-4 mr-2" />
+              Calendar View
+            </TabsTrigger>
+            <TabsTrigger value="timeline">
+              <Clock className="h-4 w-4 mr-2" />
+              Timeline
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="calendar" className="mt-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <Card className="shadow-subtle">
+                  <CardContent className="p-6">
+                    <Calendar 
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      className="rounded-md pointer-events-auto"
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+              
+              <div className="space-y-6">
+                <Card className="shadow-subtle">
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      {date ? date.toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      }) : 'Select a date'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {getDailyFocus() && (
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium">Focus for the Day</h3>
+                        <p className="text-sm bg-primary/5 p-3 rounded-md">{getDailyFocus()}</p>
+                      </div>
+                    )}
+                    
+                    {getDailyPriorities().length > 0 && (
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium">Top Priorities</h3>
+                        <div className="space-y-1">
+                          {getDailyPriorities().map((priority, index) => (
+                            <div key={index} className="text-sm bg-accent/40 p-2 rounded-md flex items-center">
+                              <div className="h-5 w-5 flex items-center justify-center bg-primary/10 rounded-full text-xs mr-2">
+                                {index + 1}
+                              </div>
+                              {priority}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
+                      <TabsList className="w-full mb-4">
+                        <TabsTrigger value="tasks" className="flex-1">
+                          <ClipboardList className="h-4 w-4 mr-2" />
+                          Tasks
+                        </TabsTrigger>
+                        <TabsTrigger value="habits" className="flex-1">
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          Habits
+                        </TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="tasks" className="mt-0">
+                        <TasksView tasks={selectedDateData.tasks} />
+                      </TabsContent>
+                      
+                      <TabsContent value="habits" className="mt-0">
+                        <HabitsView 
+                          habits={selectedDateData.habits} 
+                          onToggleHabit={handleToggleCalendarHabit}
+                        />
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-subtle">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm">Energy & Breaks</CardTitle>
+                    {date && date.toDateString() === new Date().toDateString() && (
+                      <Button variant="ghost" size="sm" onClick={handleEditBreaks}>
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <EnergyView 
+                      energyLevel={selectedDateData.energy}
+                      breaks={selectedDateData.breaks}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="timeline" className="mt-0">
             <Card className="shadow-subtle">
               <CardHeader>
-                <CardTitle className="text-lg">
-                  {date ? date.toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  }) : 'Select a date'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {getDailyFocus() && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Focus for the Day</h3>
-                    <p className="text-sm bg-primary/5 p-3 rounded-md">{getDailyFocus()}</p>
-                  </div>
-                )}
+                <CardTitle>Your Progress Timeline</CardTitle>
+                <CardDescription>Review your past daily routines, focus areas, priorities, and achievements</CardDescription>
                 
-                {getDailyPriorities().length > 0 && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Top Priorities</h3>
-                    <div className="space-y-1">
-                      {getDailyPriorities().map((priority, index) => (
-                        <div key={index} className="text-sm bg-accent/40 p-2 rounded-md flex items-center">
-                          <div className="h-5 w-5 flex items-center justify-center bg-primary/10 rounded-full text-xs mr-2">
-                            {index + 1}
-                          </div>
-                          {priority}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="w-full mb-4">
-                    <TabsTrigger value="tasks" className="flex-1">
-                      <ClipboardList className="h-4 w-4 mr-2" />
-                      Tasks
-                    </TabsTrigger>
-                    <TabsTrigger value="habits" className="flex-1">
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Habits
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="tasks" className="mt-0">
-                    <TasksView tasks={selectedDateData.tasks} />
-                  </TabsContent>
-                  
-                  <TabsContent value="habits" className="mt-0">
-                    <HabitsView 
-                      habits={selectedDateData.habits} 
-                      onToggleHabit={handleToggleCalendarHabit}
-                    />
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-            
-            <Card className="shadow-subtle">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm">Energy & Breaks</CardTitle>
-                {date && date.toDateString() === new Date().toDateString() && (
-                  <Button variant="ghost" size="sm" onClick={handleEditBreaks}>
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                )}
+                <div className="mt-2">
+                  <Tabs value={timelineTab} onValueChange={setTimelineTab} className="w-full">
+                    <TabsList className="w-full mb-4">
+                      <TabsTrigger value="daily" className="flex-1">
+                        <Clock className="h-4 w-4 mr-2" />
+                        Daily Routine
+                      </TabsTrigger>
+                      <TabsTrigger value="focus" className="flex-1">
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Focus & Priorities
+                      </TabsTrigger>
+                      <TabsTrigger value="stats" className="flex-1">
+                        <BarChart className="h-4 w-4 mr-2" />
+                        Progress Stats
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <EnergyView 
-                  energyLevel={selectedDateData.energy}
-                  breaks={selectedDateData.breaks}
+              <CardContent>
+                <Timeline 
+                  dates={getAllDatesWithData()}
+                  timelineTab={timelineTab}
+                  dailyFocus={dailyFocus}
+                  dailyPriorities={dailyPriorities}
+                  savedTasks={savedTasks}
+                  savedHabits={savedHabits}
+                  savedEnergyLevels={savedEnergyLevels}
+                  savedBreaks={savedBreaks}
                 />
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
 
         <EditDialog
           isOpen={isEditDialogOpen}

@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -10,9 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import AppLayout from "@/components/layout/AppLayout";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Activity, BarChart2, PieChart as PieChartIcon, LineChart as LineChartIcon } from "lucide-react";
+import { useTheme } from "@/providers/theme-provider";
 
 // Sample colors
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
+const DARK_MODE_COLORS = ["#61dafb", "#2ecc71", "#f1c40f", "#e74c3c", "#9b59b6"];
 
 // Time periods
 const TIME_PERIODS = ["Last 7 Days", "Last 30 Days", "Last 90 Days"];
@@ -22,6 +25,27 @@ const Insights = () => {
   const [tasksData] = useLocalStorage("zen-tracker-tasks", []);
   const [energyLevels] = useLocalStorage("energy-levels", {});
   const [selectedPeriod, setSelectedPeriod] = useState("Last 7 Days");
+  const { theme } = useTheme();
+  
+  const isDarkMode = theme === "dark";
+  const chartColors = isDarkMode ? DARK_MODE_COLORS : COLORS;
+
+  // Custom tooltip with dark mode support
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className={`p-2 rounded-md shadow-md ${isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-white text-gray-800'} border border-gray-300`}>
+          <p className="font-medium">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={`item-${index}`} style={{ color: entry.color }}>
+              {entry.name}: {entry.value}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
   // Prepare habit completion data
   const habitCompletionData = [
@@ -124,13 +148,13 @@ const Insights = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={habitCompletionData}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis />
-                      <Tooltip />
+                      <Tooltip content={<CustomTooltip />} />
                       <Legend />
-                      <Bar dataKey="total" fill="#e5e7eb" name="Total Habits" />
-                      <Bar dataKey="completed" fill="#3b82f6" name="Completed" />
+                      <Bar dataKey="total" fill={isDarkMode ? "#4B5563" : "#e5e7eb"} name="Total Habits" />
+                      <Bar dataKey="completed" fill={isDarkMode ? "#60A5FA" : "#3b82f6"} name="Completed" />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -144,13 +168,13 @@ const Insights = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={taskCompletionData}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis />
-                      <Tooltip />
+                      <Tooltip content={<CustomTooltip />} />
                       <Legend />
-                      <Bar dataKey="total" fill="#e5e7eb" name="Total Tasks" />
-                      <Bar dataKey="completed" fill="#3b82f6" name="Completed" />
+                      <Bar dataKey="total" fill={isDarkMode ? "#4B5563" : "#e5e7eb"} name="Total Tasks" />
+                      <Bar dataKey="completed" fill={isDarkMode ? "#60A5FA" : "#3b82f6"} name="Completed" />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -175,10 +199,10 @@ const Insights = () => {
                         label={({name, percent}) => `${name} (${(percent * 100).toFixed(0)}%)`}
                       >
                         {habitCategoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip content={<CustomTooltip />} />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -192,15 +216,15 @@ const Insights = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={energyLevelData}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis domain={[0, 10]} />
-                      <Tooltip />
+                      <Tooltip content={<CustomTooltip />} />
                       <Legend />
                       <Line 
                         type="monotone" 
                         dataKey="value" 
-                        stroke="#8884d8" 
+                        stroke={isDarkMode ? "#A78BFA" : "#8884d8"} 
                         activeDot={{ r: 8 }} 
                         name="Energy Level"
                       />
@@ -221,11 +245,11 @@ const Insights = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={streakData} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis type="number" />
                       <YAxis dataKey="name" type="category" width={100} />
-                      <Tooltip />
-                      <Bar dataKey="streak" fill="#3b82f6" name="Current Streak" />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="streak" fill={isDarkMode ? "#60A5FA" : "#3b82f6"} name="Current Streak" />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -239,22 +263,22 @@ const Insights = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={habitCompletionData}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis />
-                      <Tooltip />
+                      <Tooltip content={<CustomTooltip />} />
                       <Legend />
                       <Line 
                         type="monotone" 
                         dataKey="completed" 
-                        stroke="#3b82f6" 
+                        stroke={isDarkMode ? "#60A5FA" : "#3b82f6"} 
                         activeDot={{ r: 8 }} 
                         name="Completed Habits"
                       />
                       <Line 
                         type="monotone" 
                         dataKey="total" 
-                        stroke="#e5e7eb" 
+                        stroke={isDarkMode ? "#4B5563" : "#e5e7eb"} 
                         name="Total Habits"
                       />
                     </LineChart>
@@ -274,22 +298,22 @@ const Insights = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={taskCompletionData}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis />
-                      <Tooltip />
+                      <Tooltip content={<CustomTooltip />} />
                       <Legend />
                       <Line 
                         type="monotone" 
                         dataKey="completed" 
-                        stroke="#3b82f6" 
+                        stroke={isDarkMode ? "#60A5FA" : "#3b82f6"} 
                         activeDot={{ r: 8 }} 
                         name="Completed Tasks"
                       />
                       <Line 
                         type="monotone" 
                         dataKey="total" 
-                        stroke="#e5e7eb" 
+                        stroke={isDarkMode ? "#4B5563" : "#e5e7eb"} 
                         name="Total Tasks"
                       />
                     </LineChart>
@@ -305,13 +329,13 @@ const Insights = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={taskCompletionData}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis domain={[0, 100]} />
-                      <Tooltip />
+                      <Tooltip content={<CustomTooltip />} />
                       <Bar 
                         dataKey="completionRate" 
-                        fill="#3b82f6" 
+                        fill={isDarkMode ? "#60A5FA" : "#3b82f6"} 
                         name="Completion Rate (%)"
                       />
                     </BarChart>
@@ -331,14 +355,14 @@ const Insights = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={energyLevelData}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis domain={[0, 10]} />
-                      <Tooltip />
+                      <Tooltip content={<CustomTooltip />} />
                       <Line 
                         type="monotone" 
                         dataKey="value" 
-                        stroke="#8884d8" 
+                        stroke={isDarkMode ? "#A78BFA" : "#8884d8"} 
                         activeDot={{ r: 8 }} 
                         name="Energy Level"
                       />
@@ -355,24 +379,24 @@ const Insights = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={energyLevelData}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.5} />
                       <XAxis dataKey="name" />
                       <YAxis yAxisId="left" domain={[0, 10]} />
                       <YAxis yAxisId="right" orientation="right" domain={[0, 12]} />
-                      <Tooltip />
+                      <Tooltip content={<CustomTooltip />} />
                       <Legend />
                       <Line 
                         yAxisId="left"
                         type="monotone" 
                         dataKey="value" 
-                        stroke="#8884d8" 
+                        stroke={isDarkMode ? "#A78BFA" : "#8884d8"} 
                         name="Energy Level"
                       />
                       <Line 
                         yAxisId="right"
                         type="monotone" 
                         dataKey="completed" 
-                        stroke="#3b82f6" 
+                        stroke={isDarkMode ? "#60A5FA" : "#3b82f6"} 
                         name="Tasks Completed"
                         data={taskCompletionData}
                       />
