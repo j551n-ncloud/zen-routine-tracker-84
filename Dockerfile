@@ -1,7 +1,7 @@
 
 FROM node:18-alpine
 
-# Install dependencies for SQLite and nginx
+# Install dependencies for MySQL and nginx
 RUN apk add --no-cache python3 make g++ wget nginx
 
 # Create app directory

@@ -19,12 +19,16 @@ services:
     environment:
       - NODE_ENV=production
       - VITE_BASE_URL=/
-      - VITE_MARIADB_API_URL=/api
+      - VITE_MARIADB_HOST=mariadb
+      - VITE_MARIADB_PORT=3306
+      - VITE_MARIADB_USER=zentracker
+      - VITE_MARIADB_PASSWORD=zentracker
+      - VITE_MARIADB_DATABASE=zentracker
     restart: unless-stopped
     networks:
       - zentracker_network
     depends_on:
-      - mariadb-api
+      - mariadb
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
       interval: 30s
@@ -53,25 +57,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-
-  mariadb-api:
-    build:
-      context: .
-      dockerfile: Dockerfile.mariadb-api
-    volumes:
-      - ./mariadb-api:/app
-    # No port exposure to keep it internal only
-    environment:
-      - DB_HOST=mariadb
-      - DB_PORT=3306
-      - DB_USER=zentracker
-      - DB_PASSWORD=zentracker
-      - DB_NAME=zentracker
-    networks:
-      - zentracker_network
-    restart: unless-stopped
-    depends_on:
-      - mariadb
 
 networks:
   zentracker_network:

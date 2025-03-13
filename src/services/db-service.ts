@@ -1,7 +1,10 @@
 
 import { toast } from "sonner";
-import axios from "axios";
+import mysql from "mysql2/promise";
 import apiConfig from "./api-config";
+
+// Create a connection pool
+let pool: mysql.Pool | null = null;
 
 // Initialize flag
 let isInitialized = false;
@@ -29,20 +32,29 @@ export const initDatabase = async (): Promise<void> => {
     try {
       console.log('Initializing MariaDB database connection');
       
-      // Test connection to MariaDB API
-      const response = await axios.get(apiConfig.endpoints.status);
+      // Create connection pool
+      pool = mysql.createPool({
+        host: apiConfig.db.host,
+        port: apiConfig.db.port,
+        user: apiConfig.db.user,
+        password: apiConfig.db.password,
+        database: apiConfig.db.database,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0
+      });
       
-      if (response.status === 200) {
-        isInitialized = true;
-        isInitializing = false;
-        
-        const initTime = Math.round(performance.now() - initStartTime);
-        console.log(`Database connection initialized successfully in ${initTime}ms`);
-        
-        resolve();
-      } else {
-        throw new Error(`Failed to connect to MariaDB API: ${response.statusText}`);
-      }
+      // Test connection
+      const connection = await pool.getConnection();
+      connection.release();
+      
+      isInitialized = true;
+      isInitializing = false;
+      
+      const initTime = Math.round(performance.now() - initStartTime);
+      console.log(`Database connection initialized successfully in ${initTime}ms`);
+      
+      resolve();
     } catch (error) {
       console.error("Failed to initialize database connection:", error);
       isInitializing = false;
@@ -66,6 +78,10 @@ export const executeQuery = async <T>(
 ): Promise<T[]> => {
   await ensureDatabaseInitialized();
   
+  if (!pool) {
+    throw new Error("Database connection not initialized");
+  }
+  
   try {
     // Create a unique cache key if using cache
     const cacheKey = useCache ? `${query}_${JSON.stringify(params)}` : '';
@@ -79,13 +95,8 @@ export const executeQuery = async <T>(
     
     const startTime = performance.now();
     
-    // Send query to MariaDB API
-    const response = await axios.post(apiConfig.endpoints.query, {
-      query,
-      params
-    });
-    
-    const results = response.data.results as T[];
+    // Execute query with MariaDB
+    const [results] = await pool.query<any>(query, params);
     
     // Add to cache for read operations
     if (useCache && query.trim().toLowerCase().startsWith('select')) {
@@ -97,7 +108,7 @@ export const executeQuery = async <T>(
       console.warn(`Slow query (${queryTime}ms): ${query}`);
     }
     
-    return results;
+    return results as T[];
   } catch (error) {
     console.error("Query execution error:", error, "Query:", query, "Params:", params);
     throw error;
@@ -111,14 +122,15 @@ export const executeWrite = async (
 ): Promise<void> => {
   await ensureDatabaseInitialized();
   
+  if (!pool) {
+    throw new Error("Database connection not initialized");
+  }
+  
   try {
     const startTime = performance.now();
     
-    // Send write operation to MariaDB API
-    await axios.post(apiConfig.endpoints.execute, {
-      query,
-      params
-    });
+    // Execute write operation with MariaDB
+    await pool.query(query, params);
     
     // Clear cache on write operations as data may have changed
     queryCache.clear();
