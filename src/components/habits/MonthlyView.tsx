@@ -81,7 +81,7 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ className }) => {
             day_today: "bg-accent text-accent-foreground",
           }}
           components={{
-            Day: ({ day, isSelected }) => customDayRender(day, isSelected),
+            Day: ({ date, selected }) => customDayRender(date, selected || false),
           }}
         />
       </CardContent>
