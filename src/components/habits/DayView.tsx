@@ -22,7 +22,7 @@ interface DailyHabitStatus {
 
 const DayView: React.FC<DayViewProps> = ({ className }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const { habits } = useHabitsStorage();
+  const { habits, toggleHabit } = useHabitsStorage();
   const [dailyHabitStatus, setDailyHabitStatus] = useLocalStorage<DailyHabitStatus>(
     "zen-tracker-daily-habits", 
     {}
@@ -60,6 +60,12 @@ const DayView: React.FC<DayViewProps> = ({ className }) => {
   };
   
   const handleToggleHabit = (id: number) => {
+    // Get the current completed status
+    const currentHabit = displayedHabits.find(h => h.id === id);
+    if (!currentHabit) return;
+    
+    const completed = currentHabit.completed;
+    
     // Create a new object to avoid direct state mutation
     const newDailyHabitStatus = { ...dailyHabitStatus };
     
@@ -69,7 +75,7 @@ const DayView: React.FC<DayViewProps> = ({ className }) => {
     }
     
     // Toggle the completion status
-    newDailyHabitStatus[dateKey][id] = !newDailyHabitStatus[dateKey][id];
+    newDailyHabitStatus[dateKey][id] = !completed;
     
     // Update state
     setDailyHabitStatus(newDailyHabitStatus);
@@ -77,11 +83,17 @@ const DayView: React.FC<DayViewProps> = ({ className }) => {
     // Update streak in the global habits only if it's today
     const isToday = format(selectedDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
     if (isToday) {
-      // We don't need to call toggleHabit here as we're only tracking daily completion
-      // not modifying the global habit state
+      toggleHabit(id);
     }
     
-    toast.success("Habit status updated");
+    // Update the displayed habits immediately
+    setDisplayedHabits(prev => 
+      prev.map(habit => 
+        habit.id === id ? { ...habit, completed: !completed } : habit
+      )
+    );
+    
+    toast.success(`Habit marked as ${completed ? 'not completed' : 'completed'}`);
   };
   
   const formattedDate = format(selectedDate, "EEEE, MMMM d, yyyy");

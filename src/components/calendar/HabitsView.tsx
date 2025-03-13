@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useHabitsStorage } from "@/hooks/use-habits-storage";
 
 interface HabitsViewProps {
   habits: Array<{
@@ -28,6 +29,7 @@ const HabitsView: React.FC<HabitsViewProps> = ({ habits, date, onToggleHabit }) 
     "zen-tracker-daily-habits", 
     {}
   );
+  const { toggleHabit } = useHabitsStorage();
 
   const handleToggleHabit = (id: number, completed: boolean) => {
     if (onToggleHabit) {
@@ -50,8 +52,17 @@ const HabitsView: React.FC<HabitsViewProps> = ({ habits, date, onToggleHabit }) 
       // Update state
       setDailyHabitStatus(newDailyHabitStatus);
       
+      // Check if it's today and update the global habit state as well
+      const today = new Date();
+      const isToday = format(date, "yyyy-MM-dd") === format(today, "yyyy-MM-dd");
+      if (isToday) {
+        toggleHabit(id);
+      }
+      
       toast.success(`Habit marked as ${completed ? 'not completed' : 'completed'}`);
     } else {
+      // If no date is provided, update the global habit state
+      toggleHabit(id);
       toast.success(`Habit marked as ${completed ? 'not completed' : 'completed'}`);
     }
   };
