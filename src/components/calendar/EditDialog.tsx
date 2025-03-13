@@ -1,9 +1,11 @@
 
 import React, { useState } from "react";
-import { X as XIcon } from "lucide-react";
+import { X as XIcon, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface EditDialogProps {
   isOpen: boolean;
@@ -17,6 +19,10 @@ interface EditDialogProps {
   setTasks: (tasks: any[]) => void;
   habits: any[];
   setHabits: (habits: any[]) => void;
+  dailyFocus: string;
+  setDailyFocus: (focus: string) => void;
+  priorities: string[];
+  setPriorities: (priorities: string[]) => void;
   onSave: () => void;
 }
 
@@ -32,11 +38,16 @@ const EditDialog: React.FC<EditDialogProps> = ({
   setTasks,
   habits,
   setHabits,
+  dailyFocus,
+  setDailyFocus,
+  priorities,
+  setPriorities,
   onSave
 }) => {
   const [newBreak, setNewBreak] = useState("");
   const [newTask, setNewTask] = useState("");
   const [newHabit, setNewHabit] = useState("");
+  const [newPriority, setNewPriority] = useState("");
 
   const addBreak = () => {
     if (newBreak) {
@@ -88,9 +99,21 @@ const EditDialog: React.FC<EditDialogProps> = ({
     }
   };
 
+  const addNewPriority = () => {
+    if (newPriority.trim() && priorities.length < 3) {
+      setPriorities([...priorities, newPriority]);
+      setNewPriority("");
+    }
+  };
+
+  const removePriority = (index: number) => {
+    const updatedPriorities = priorities.filter((_, i) => i !== index);
+    setPriorities(updatedPriorities);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Day</DialogTitle>
           <DialogDescription>
@@ -99,6 +122,56 @@ const EditDialog: React.FC<EditDialogProps> = ({
         </DialogHeader>
         
         <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">Focus for the Day</h4>
+            <Textarea
+              value={dailyFocus}
+              onChange={(e) => setDailyFocus(e.target.value)}
+              placeholder="What's your main focus for this day?"
+              className="resize-none"
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">Top 3 Priorities</h4>
+            {priorities.length > 0 && (
+              <div className="space-y-2 mb-2">
+                {priorities.map((priority, index) => (
+                  <div key={index} className="flex items-center justify-between bg-accent/50 px-3 py-2 rounded-md">
+                    <div className="flex items-center">
+                      <div className="h-5 w-5 flex items-center justify-center bg-primary/10 rounded-full text-xs mr-2">
+                        {index + 1}
+                      </div>
+                      <span className="text-sm">{priority}</span>
+                    </div>
+                    <button
+                      onClick={() => removePriority(index)}
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {priorities.length < 3 && (
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value={newPriority}
+                  onChange={(e) => setNewPriority(e.target.value)}
+                  placeholder="Add a priority"
+                  className="flex-1"
+                />
+                <Button onClick={addNewPriority} size="sm">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <h4 className="text-sm font-medium">Energy Level (0-10)</h4>
             <input

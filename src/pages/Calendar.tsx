@@ -28,6 +28,8 @@ const CalendarPage = () => {
   const [breaks, setBreaks] = useState<string[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [habits, setHabits] = useState<any[]>([]);
+  const [dailyFocusInput, setDailyFocusInput] = useState("");
+  const [prioritiesInput, setPrioritiesInput] = useState<string[]>([]);
   
   const [savedEnergyLevels, setSavedEnergyLevels] = useLocalStorage("energy-levels", {});
   const [savedBreaks, setSavedBreaks] = useLocalStorage("breaks", {});
@@ -108,10 +110,13 @@ const CalendarPage = () => {
   }, [date, currentEnergyLevel, plannedBreaks, focusForToday, priorities]);
 
   const openEditDialog = () => {
+    // Set the values based on the selected date
     setEnergyLevel(selectedDateData.energy);
     setBreaks(selectedDateData.breaks || []);
     setTasks(selectedDateData.tasks || []);
     setHabits(selectedDateData.habits || []);
+    setDailyFocusInput(dailyFocus[formattedDate] || "");
+    setPrioritiesInput(dailyPriorities[formattedDate] || []);
     setIsEditDialogOpen(true);
   };
 
@@ -131,11 +136,23 @@ const CalendarPage = () => {
     const updatedHabits = { ...savedHabits };
     updatedHabits[formattedDate] = habits;
     setSavedHabits(updatedHabits);
+    
+    // Update daily focus and priorities
+    const updatedFocus = { ...dailyFocus };
+    updatedFocus[formattedDate] = dailyFocusInput;
+    setDailyFocus(updatedFocus);
+    
+    const updatedPriorities = { ...dailyPriorities };
+    updatedPriorities[formattedDate] = prioritiesInput;
+    setDailyPriorities(updatedPriorities);
 
+    // If the date is today, update the current values too
     const today = new Date();
     if (date && date.toDateString() === today.toDateString()) {
       setCurrentEnergyLevel(energyLevel);
       setPlannedBreaks(breaks);
+      setFocusForToday(dailyFocusInput);
+      setPriorities(prioritiesInput);
     }
 
     setIsEditDialogOpen(false);
@@ -179,10 +196,7 @@ const CalendarPage = () => {
   };
 
   const handleEditBreaks = () => {
-    if (date && date.toDateString() === new Date().toDateString()) {
-      // Use the EditDialog to edit breaks for today
-      openEditDialog();
-    }
+    openEditDialog();
   };
   
   return (
@@ -287,12 +301,10 @@ const CalendarPage = () => {
                 <Card className="shadow-subtle">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-sm">Energy & Breaks</CardTitle>
-                    {date && date.toDateString() === new Date().toDateString() && (
-                      <Button variant="ghost" size="sm" onClick={handleEditBreaks}>
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                    )}
+                    <Button variant="ghost" size="sm" onClick={handleEditBreaks}>
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <EnergyView 
@@ -358,6 +370,10 @@ const CalendarPage = () => {
           setTasks={setTasks}
           habits={habits}
           setHabits={setHabits}
+          dailyFocus={dailyFocusInput}
+          setDailyFocus={setDailyFocusInput}
+          priorities={prioritiesInput}
+          setPriorities={setPrioritiesInput}
           onSave={saveChanges}
         />
       </div>
