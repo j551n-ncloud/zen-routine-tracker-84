@@ -15,13 +15,36 @@ services:
       - ./tsconfig.node.json:/app/tsconfig.node.json
       - ./tailwind.config.ts:/app/tailwind.config.ts
       - ./postcss.config.js:/app/postcss.config.js
-      - app_data:/app/data  # Store app data in a dedicated volume
+      # Don't mount node_modules from host to container
     environment:
       - NODE_ENV=production
       - VITE_BASE_URL=/
+      - VITE_SQLITE_REST_URL=http://sqlite-rest:8080
+      - VITE_SQLITE_DATABASE=/data/zentracker.db
     restart: unless-stopped
+    networks:
+      - zentracker_network
+    depends_on:
+      - sqlite-rest
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  sqlite-rest:
+    image: ghcr.io/b4fun/sqlite-rest/server:main
+    volumes:
+      - sqlite_data:/data
+    environment:
+      - SQLITE_DATABASE=/data/zentracker.db
+      - SQLITE_REST_ADDR=0.0.0.0:8080
+    networks:
+      - zentracker_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -31,5 +54,4 @@ networks:
   zentracker_network:
 
 volumes:
-  app_data:  # Define the volume for persistent storage
-
+  sqlite_data:
