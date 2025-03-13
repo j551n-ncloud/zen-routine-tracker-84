@@ -1,4 +1,5 @@
 
+
 # Welcome to your Lovable project
 
 ## Project info
@@ -60,18 +61,18 @@ This application consists of two main components that need to be properly routed
 1. Frontend (React application)
 2. Backend API (Express server)
 
-### Required Port Configuration
+### Required Port Configuration for habits.j551n.com
 
-When setting up Cloudflare Tunnels, you need to configure the following:
+For your specific setup with habits.j551n.com and habits.j551n.com/api, you'll need:
 
-1. **Public Hostname for Frontend**:
+1. **Frontend (main domain)**:
    - Service: `http://localhost:89`
-   - This routes to your frontend application
+   - This routes all traffic on habits.j551n.com to your frontend application
 
-2. **Public Hostname for API**:
+2. **API (subfolder path)**:
    - Service: `http://localhost:3001`
-   - Path: `/api/*` or `/data/*`
-   - This routes API requests to your backend
+   - Path: `/api/*`
+   - This routes API requests on habits.j551n.com/api/* to your backend
 
 ### Step-by-Step Cloudflare Tunnels Setup
 
@@ -92,10 +93,10 @@ When setting up Cloudflare Tunnels, you need to configure the following:
 
 3. **Create a Tunnel**:
    ```bash
-   cloudflared tunnel create my-habit-app
+   cloudflared tunnel create habits-app
    ```
 
-4. **Configure Your Tunnel**:
+4. **Configure Your Tunnel for habits.j551n.com**:
    Create a config file at `~/.cloudflared/config.yml`:
    ```yaml
    tunnel: <YOUR_TUNNEL_ID>
@@ -103,59 +104,46 @@ When setting up Cloudflare Tunnels, you need to configure the following:
    
    ingress:
      # Route API requests to the backend
-     - hostname: api.yourdomain.com
+     - hostname: habits.j551n.com
+       path: /api/*
        service: http://localhost:3001
      
-     # Route frontend requests
-     - hostname: yourdomain.com
+     # Route all other traffic to the frontend
+     - hostname: habits.j551n.com
        service: http://localhost:89
      
-     # Catch-all rule for handling other subdomains
+     # Catch-all rule
      - service: http_status:404
    ```
 
 5. **Start the Tunnel**:
    ```bash
-   cloudflared tunnel run
+   cloudflared tunnel run habits-app
    ```
 
 6. **DNS Configuration**:
    ```bash
-   cloudflared tunnel route dns <TUNNEL_NAME> yourdomain.com
-   cloudflared tunnel route dns <TUNNEL_NAME> api.yourdomain.com
+   cloudflared tunnel route dns habits-app habits.j551n.com
    ```
 
-### Alternative Configuration (Single Domain)
+### Important Notes for Your Setup
 
-If you prefer to use a single domain, you can use path-based routing:
+1. **Path Handling**: The server is configured to handle `/api/*` paths and will route them correctly to your backend.
 
-```yaml
-ingress:
-  # Route API requests to the backend
-  - hostname: yourdomain.com
-    path: /api/*
-    service: http://localhost:3001
-  
-  # Route frontend requests
-  - hostname: yourdomain.com
-    service: http://localhost:89
-  
-  # Catch-all
-  - service: http_status:404
-```
+2. **CORS Configuration**: Since both your frontend and API are on the same domain (just different paths), CORS issues should be minimal.
 
-### Important Notes for Cloudflare Tunnels
+3. **Checking Configuration**: You can verify your setup is working by:
+   - Accessing habits.j551n.com (should show your frontend)
+   - Accessing habits.j551n.com/api/health (should return `{"status":"ok"}`)
 
-1. **Path Handling**: The backend server has been configured to handle various path formats, including those with and without leading slashes.
+4. **Debugging**: If you encounter issues:
+   - Check server logs for any routing problems
+   - Ensure the ports (89 for frontend, 3001 for backend) match your Docker configuration
+   - Verify that Cloudflare Tunnel is running and connected
 
-2. **CORS Configuration**: The server is configured to allow requests from any origin for development purposes. For production, consider limiting this to your domain.
-
-3. **Logging**: The server outputs detailed logs that can help with debugging any routing issues.
-
-4. **Data Directory**: The application stores data in a `/data` directory. When deploying, ensure this directory is persisted and has proper permissions.
-
-5. **SSL/TLS**: Cloudflare Tunnels automatically handle SSL/TLS, so you don't need to configure certificates on your server.
+5. **Data Persistence**: The application stores data in a `/data` directory. Ensure this directory is persisted between deployments.
 
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+
