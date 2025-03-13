@@ -30,7 +30,7 @@ const habitCategories = [
 ];
 
 // Icons mapping for the habit categories
-const categoryIcons = {
+const categoryIcons: Record<string, React.ElementType> = {
   "health": Droplets,
   "fitness": Dumbbell,
   "learning": BookOpen,
@@ -49,7 +49,7 @@ const HabitTracker: React.FC = () => {
   };
 
   const getIconForCategory = (categoryId: string) => {
-    return categoryIcons[categoryId as keyof typeof categoryIcons] || Coffee;
+    return categoryIcons[categoryId] || Coffee;
   };
 
   const handleAddHabit = () => {

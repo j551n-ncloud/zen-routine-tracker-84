@@ -7,7 +7,7 @@ export interface Habit {
   streak: number;
   completed: boolean;
   category: string;
-  icon?: any;
+  icon?: string; // Changed from any to string to prevent type issues
 }
 
 // Initial habit data for new users
@@ -55,17 +55,16 @@ export function useHabitsStorage() {
   const addHabit = (habit: Omit<Habit, "id" | "streak" | "completed">) => {
     const newId = Math.max(...habits.map(h => h.id), 0) + 1;
     
-    setHabits([
-      ...habits,
-      {
-        id: newId,
-        name: habit.name,
-        category: habit.category,
-        streak: 0,
-        completed: false
-      }
-    ]);
+    const newHabit: Habit = {
+      id: newId,
+      name: habit.name,
+      category: habit.category,
+      streak: 0,
+      completed: false,
+      ...(habit.icon ? { icon: habit.icon } : {})
+    };
     
+    setHabits([...habits, newHabit]);
     return newId;
   };
 
