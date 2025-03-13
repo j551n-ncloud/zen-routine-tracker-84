@@ -34,7 +34,6 @@ export function useServerStorage<T>(key: string, initialValue: T) {
               console.log(`Successfully saved initial value for key: ${key}`);
             } catch (saveError) {
               console.warn(`Could not save initial value for ${key}:`, saveError);
-              // Don't show toast for this case
             }
           }, 300); // Small consistent delay
         }
