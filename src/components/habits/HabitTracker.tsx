@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useHabitsStorage } from "@/hooks/use-habits-storage";
 
 // Sample habit categories and their associated icons
 const habitCategories = [
@@ -37,70 +38,18 @@ const categoryIcons = {
   "mindfulness": Coffee,
 };
 
-// Sample habit data with streaks
-const initialHabits = [
-  { 
-    id: 1, 
-    name: "Drink Water", 
-    streak: 12, 
-    completed: false, 
-    category: "health",
-    icon: Droplets,
-  },
-  { 
-    id: 2, 
-    name: "Exercise", 
-    streak: 5, 
-    completed: false, 
-    category: "fitness",
-    icon: Dumbbell,
-  },
-  { 
-    id: 3, 
-    name: "Read Book", 
-    streak: 8, 
-    completed: false, 
-    category: "learning",
-    icon: BookOpen,
-  },
-  { 
-    id: 4, 
-    name: "8h Sleep", 
-    streak: 3, 
-    completed: false, 
-    category: "sleep",
-    icon: BedDouble,
-  },
-  { 
-    id: 5, 
-    name: "Meditation", 
-    streak: 15, 
-    completed: false, 
-    category: "mindfulness",
-    icon: Coffee,
-  },
-];
-
 const HabitTracker: React.FC = () => {
-  const [habits, setHabits] = useState(initialHabits);
+  const { habits, addHabit, toggleHabit } = useHabitsStorage();
   const [isAddHabitOpen, setIsAddHabitOpen] = useState(false);
   const [newHabit, setNewHabit] = useState({ name: "", category: "" });
-
-  const toggleHabit = (id: number) => {
-    setHabits(habits.map(habit => 
-      habit.id === id 
-        ? { 
-            ...habit, 
-            completed: !habit.completed,
-            streak: !habit.completed ? habit.streak + 1 : habit.streak - 1
-          } 
-        : habit
-    ));
-  };
 
   const getCategoryColor = (categoryId: string) => {
     const category = habitCategories.find(c => c.id === categoryId);
     return category?.color || "text-gray-500";
+  };
+
+  const getIconForCategory = (categoryId: string) => {
+    return categoryIcons[categoryId as keyof typeof categoryIcons] || Coffee;
   };
 
   const handleAddHabit = () => {
@@ -109,21 +58,10 @@ const HabitTracker: React.FC = () => {
       return;
     }
 
-    const newId = Math.max(...habits.map(h => h.id), 0) + 1;
-    const category = newHabit.category as keyof typeof categoryIcons;
-    const icon = categoryIcons[category] || Coffee;
-
-    setHabits([
-      ...habits,
-      {
-        id: newId,
-        name: newHabit.name,
-        streak: 0,
-        completed: false,
-        category: newHabit.category,
-        icon,
-      }
-    ]);
+    addHabit({
+      name: newHabit.name,
+      category: newHabit.category,
+    });
 
     setNewHabit({ name: "", category: "" });
     setIsAddHabitOpen(false);
@@ -133,47 +71,50 @@ const HabitTracker: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {habits.map(habit => (
-          <div 
-            key={habit.id}
-            className="group relative bg-card rounded-xl border p-4 shadow-subtle hover-scale overflow-hidden"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={() => toggleHabit(habit.id)}
-                  className={cn(
-                    "h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300",
-                    habit.completed 
-                      ? "bg-primary/10 text-primary" 
-                      : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                  )}
-                >
-                  <habit.icon className="h-5 w-5" />
-                </button>
-                <div>
-                  <h3 className="font-medium">{habit.name}</h3>
-                  <span className={`text-xs ${getCategoryColor(habit.category)}`}>
-                    {habitCategories.find(c => c.id === habit.category)?.name}
-                  </span>
+        {habits.map(habit => {
+          const IconComponent = getIconForCategory(habit.category);
+          return (
+            <div 
+              key={habit.id}
+              className="group relative bg-card rounded-xl border p-4 shadow-subtle hover-scale overflow-hidden"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => toggleHabit(habit.id)}
+                    className={cn(
+                      "h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300",
+                      habit.completed 
+                        ? "bg-primary/10 text-primary" 
+                        : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                    )}
+                  >
+                    <IconComponent className="h-5 w-5" />
+                  </button>
+                  <div>
+                    <h3 className="font-medium">{habit.name}</h3>
+                    <span className={`text-xs ${getCategoryColor(habit.category)}`}>
+                      {habitCategories.find(c => c.id === habit.category)?.name}
+                    </span>
+                  </div>
                 </div>
+                
+                <StreakBadge count={habit.streak} />
               </div>
               
-              <StreakBadge count={habit.streak} />
+              {/* Progress indicator bar at bottom */}
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted overflow-hidden">
+                <div 
+                  className={cn(
+                    "h-full transition-all duration-500 ease-out",
+                    habit.completed ? "bg-primary" : "bg-primary/20 group-hover:bg-primary/40"
+                  )}
+                  style={{ width: `${(habit.streak / 30) * 100}%` }}
+                />
+              </div>
             </div>
-            
-            {/* Progress indicator bar at bottom */}
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted overflow-hidden">
-              <div 
-                className={cn(
-                  "h-full transition-all duration-500 ease-out",
-                  habit.completed ? "bg-primary" : "bg-primary/20 group-hover:bg-primary/40"
-                )}
-                style={{ width: `${(habit.streak / 30) * 100}%` }}
-              />
-            </div>
-          </div>
-        ))}
+          );
+        })}
         
         {/* Add New Habit Card */}
         <div 

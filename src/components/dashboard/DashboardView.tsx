@@ -1,5 +1,6 @@
 
 import React from "react";
+import { Link } from "react-router-dom";
 import HabitTracker from "../habits/HabitTracker";
 import FocusToday from "../tasks/FocusToday";
 import TaskManager from "../tasks/TaskManager";
@@ -30,9 +31,9 @@ const DashboardView: React.FC = () => {
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-medium">Habit Streaks</h2>
-              <button className="text-sm text-primary font-medium hover:underline">
+              <Link to="/habits" className="text-sm text-primary font-medium hover:underline">
                 View All
-              </button>
+              </Link>
             </div>
             <HabitTracker />
           </section>
@@ -41,9 +42,9 @@ const DashboardView: React.FC = () => {
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-medium">Tasks</h2>
-              <button className="text-sm text-primary font-medium hover:underline">
+              <Link to="/tasks" className="text-sm text-primary font-medium hover:underline">
                 View All
-              </button>
+              </Link>
             </div>
             <TaskManager />
           </section>
