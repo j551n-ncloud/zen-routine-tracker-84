@@ -39,8 +39,7 @@ services:
     volumes:
       - sqlite_data:/db
       - ./sqlite-api:/app
-    ports:
-      - "3000:3000"
+    # Removed port mapping to make container only accessible via internal network
     networks:
       - zentracker_network
     restart: unless-stopped
