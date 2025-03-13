@@ -7,6 +7,7 @@ export interface Task {
   priority: 'high' | 'medium' | 'low';
   completed: boolean;
   dueDate: Date | string;
+  startDate?: Date | string;
 }
 
 // Initial task data for new users
@@ -16,6 +17,7 @@ const initialTasks: Task[] = [
     title: 'Finish project presentation',
     priority: 'high',
     completed: false,
+    startDate: new Date(Date.now()),
     dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24), // tomorrow
   },
   {
@@ -23,6 +25,7 @@ const initialTasks: Task[] = [
     title: 'Schedule team meeting',
     priority: 'medium',
     completed: false,
+    startDate: new Date(Date.now()),
     dueDate: new Date(Date.now() + 1000 * 60 * 60 * 48), // day after tomorrow
   },
   {
@@ -30,6 +33,7 @@ const initialTasks: Task[] = [
     title: 'Review weekly metrics',
     priority: 'low',
     completed: true,
+    startDate: new Date(Date.now() - 1000 * 60 * 60 * 24),
     dueDate: new Date(), // today
   },
   {
@@ -37,6 +41,7 @@ const initialTasks: Task[] = [
     title: 'Send client proposal',
     priority: 'high',
     completed: false,
+    startDate: new Date(Date.now() - 1000 * 60 * 60 * 48),
     dueDate: new Date(Date.now() - 1000 * 60 * 60 * 24), // yesterday (overdue)
   },
   {
@@ -44,6 +49,7 @@ const initialTasks: Task[] = [
     title: 'Research new tools',
     priority: 'medium',
     completed: false,
+    startDate: new Date(Date.now()),
     dueDate: new Date(Date.now() + 1000 * 60 * 60 * 72), // 3 days from now
   },
 ];
@@ -55,6 +61,7 @@ const initialUpcomingTasks: Task[] = [
     title: 'Quarterly planning session',
     priority: 'high',
     completed: false,
+    startDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3),
     dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 1 week from now
   },
   {
@@ -62,6 +69,7 @@ const initialUpcomingTasks: Task[] = [
     title: 'Update documentation',
     priority: 'medium',
     completed: false,
+    startDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2),
     dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5), // 5 days from now
   },
   {
@@ -69,13 +77,16 @@ const initialUpcomingTasks: Task[] = [
     title: 'Release schedule review',
     priority: 'low',
     completed: false,
+    startDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5),
     dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 10), // 10 days from now
   },
 ];
 
 // Helper function to ensure we're working with Date objects
 const ensureDate = (dateInput: Date | string): Date => {
-  return dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (dateInput instanceof Date) return dateInput;
+  if (typeof dateInput === 'string') return new Date(dateInput);
+  return new Date();
 };
 
 export function useTasksStorage() {
@@ -91,7 +102,10 @@ export function useTasksStorage() {
     
     const taskToAdd = {
       id: newId,
-      ...task
+      ...task,
+      // Ensure dates are properly formatted
+      dueDate: ensureDate(task.dueDate),
+      startDate: task.startDate ? ensureDate(task.startDate) : ensureDate(task.dueDate)
     };
 
     // Check if task should go in today or upcoming list
@@ -110,6 +124,32 @@ export function useTasksStorage() {
       setUpcomingTasks([...upcomingTasks, taskToAdd]);
     }
     
+    // Update calendar task data for this date
+    try {
+      const formattedDate = formatDate(taskDate);
+      
+      const calendarTasksData = localStorage.getItem("calendar-tasks");
+      if (calendarTasksData) {
+        const savedTasks = JSON.parse(calendarTasksData);
+        
+        const simplifiedTask = {
+          id: newId,
+          title: task.title,
+          completed: false
+        };
+        
+        if (savedTasks[formattedDate]) {
+          savedTasks[formattedDate] = [...savedTasks[formattedDate], simplifiedTask];
+        } else {
+          savedTasks[formattedDate] = [simplifiedTask];
+        }
+        
+        localStorage.setItem("calendar-tasks", JSON.stringify(savedTasks));
+      }
+    } catch (error) {
+      console.error("Error updating calendar tasks:", error);
+    }
+    
     return newId;
   };
 
@@ -124,6 +164,9 @@ export function useTasksStorage() {
         completed: !updatedTasks[taskIndex].completed
       };
       setTasks(updatedTasks);
+      
+      // Also update in calendar if this is for today or a specific date
+      updateTaskInCalendar(updatedTasks[taskIndex]);
     } else {
       // Check in the upcoming tasks list
       const upcomingTaskIndex = upcomingTasks.findIndex(task => task.id === id);
@@ -134,14 +177,63 @@ export function useTasksStorage() {
           completed: !updatedUpcomingTasks[upcomingTaskIndex].completed
         };
         setUpcomingTasks(updatedUpcomingTasks);
+        
+        // Also update in calendar
+        updateTaskInCalendar(updatedUpcomingTasks[upcomingTaskIndex]);
       }
     }
+  };
+
+  // Helper to update a task in the calendar data
+  const updateTaskInCalendar = (task: Task) => {
+    try {
+      const taskDate = ensureDate(task.dueDate);
+      const formattedDate = formatDate(taskDate);
+      
+      const calendarTasksData = localStorage.getItem("calendar-tasks");
+      if (calendarTasksData) {
+        const savedTasks = JSON.parse(calendarTasksData);
+        
+        if (savedTasks[formattedDate]) {
+          savedTasks[formattedDate] = savedTasks[formattedDate].map((t: any) =>
+            t.id === task.id ? { ...t, completed: task.completed } : t
+          );
+          
+          localStorage.setItem("calendar-tasks", JSON.stringify(savedTasks));
+        }
+      }
+    } catch (error) {
+      console.error("Error updating task in calendar:", error);
+    }
+  };
+
+  const formatDate = (date: Date): string => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   };
 
   const removeTask = (id: number) => {
     // Check in both lists and remove from the appropriate one
     setTasks(tasks.filter(task => task.id !== id));
     setUpcomingTasks(upcomingTasks.filter(task => task.id !== id));
+    
+    // Also remove from calendar tasks if present
+    try {
+      const calendarTasksData = localStorage.getItem("calendar-tasks");
+      if (calendarTasksData) {
+        const savedTasks = JSON.parse(calendarTasksData);
+        
+        // Look through all dates
+        for (const date in savedTasks) {
+          if (savedTasks[date].some((t: any) => t.id === id)) {
+            savedTasks[date] = savedTasks[date].filter((t: any) => t.id !== id);
+            localStorage.setItem("calendar-tasks", JSON.stringify(savedTasks));
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error removing task from calendar:", error);
+    }
   };
 
   return {

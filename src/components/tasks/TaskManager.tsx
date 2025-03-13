@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -78,6 +79,7 @@ const TaskManager: React.FC = () => {
     title: '',
     priority: 'medium',
     dueDate: new Date(),
+    startDate: new Date(),
   });
 
   const formatDate = (date: Date | string) => {
@@ -142,12 +144,14 @@ const TaskManager: React.FC = () => {
       priority: newTask.priority as 'high' | 'medium' | 'low',
       completed: false,
       dueDate: newTask.dueDate,
+      startDate: newTask.startDate,
     });
 
     setNewTask({
       title: '',
       priority: 'medium',
       dueDate: new Date(),
+      startDate: new Date(),
     });
     
     setIsAddTaskOpen(false);
@@ -317,23 +321,47 @@ const TaskManager: React.FC = () => {
               </Select>
             </div>
             <div className="grid gap-2">
+              <Label>Start Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="justify-start text-left font-normal pointer-events-auto"
+                  >
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {newTask.startDate ? format(new Date(newTask.startDate), "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={new Date(newTask.startDate)}
+                    onSelect={(date) => date && setNewTask({...newTask, startDate: date})}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="grid gap-2">
               <Label>Due Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="justify-start text-left font-normal"
+                    className="justify-start text-left font-normal pointer-events-auto"
                   >
                     <CalendarDays className="mr-2 h-4 w-4" />
-                    {newTask.dueDate ? format(newTask.dueDate, "PPP") : "Pick a date"}
+                    {newTask.dueDate ? format(new Date(newTask.dueDate), "PPP") : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={newTask.dueDate}
+                    selected={new Date(newTask.dueDate)}
                     onSelect={(date) => date && setNewTask({...newTask, dueDate: date})}
                     initialFocus
+                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>

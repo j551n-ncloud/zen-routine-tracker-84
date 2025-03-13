@@ -86,6 +86,39 @@ export const getSelectedDateData = (
     data.breaks = savedBreaks[formattedDate];
   }
 
+  // If this is today's date, try to get tasks from the task manager
+  if (date) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(date);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    try {
+      // Get tasks for the selected date
+      const tasksData = localStorage.getItem("zen-tracker-tasks");
+      if (tasksData) {
+        const allTasks = JSON.parse(tasksData);
+        // Find tasks due on the selected date
+        const tasksForDate = allTasks.filter((task: any) => {
+          const taskDate = new Date(task.dueDate);
+          taskDate.setHours(0, 0, 0, 0);
+          return taskDate.getTime() === selectedDate.getTime();
+        });
+        
+        // Only override if we don't already have tasks for this date
+        if (tasksForDate.length > 0 && !savedTasks[formattedDate]) {
+          data.tasks = tasksForDate.map((task: any) => ({
+            id: task.id,
+            title: task.title,
+            completed: task.completed
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Error getting tasks from localStorage:", error);
+    }
+  }
+
   // Import current habits and their completion status
   try {
     const habitsData = localStorage.getItem("zen-tracker-habits");
@@ -93,11 +126,11 @@ export const getSelectedDateData = (
       const allHabits = JSON.parse(habitsData);
       // Add any habits not already in the data
       const existingHabitIds = new Set(data.habits.map(h => h.id));
-      const habitsToAdd = allHabits.filter(h => !existingHabitIds.has(h.id))
-        .map(h => ({
+      const habitsToAdd = allHabits.filter((h: any) => !existingHabitIds.has(h.id))
+        .map((h: any) => ({
           id: h.id,
           name: h.name,
-          completed: h.completed
+          completed: h.completed || false
         }));
       
       data.habits = [...data.habits, ...habitsToAdd];

@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import AppLayout from "@/components/layout/AppLayout";
@@ -15,6 +15,8 @@ import HabitsView from "@/components/calendar/HabitsView";
 import EnergyView from "@/components/calendar/EnergyView";
 import EditDialog from "@/components/calendar/EditDialog";
 import { formatDate, getSelectedDateData } from "@/components/calendar/calendarUtils";
+import { useTasksStorage } from "@/hooks/use-tasks-storage";
+import { useHabitsStorage } from "@/hooks/use-habits-storage";
 
 const CalendarPage = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -27,8 +29,11 @@ const CalendarPage = () => {
   
   const [savedEnergyLevels, setSavedEnergyLevels] = useLocalStorage("energy-levels", {});
   const [savedBreaks, setSavedBreaks] = useLocalStorage("breaks", {});
-  const [savedTasks, setSavedTasks] = useLocalStorage("tasks", {});
-  const [savedHabits, setSavedHabits] = useLocalStorage("habits", {});
+  const [savedTasks, setSavedTasks] = useLocalStorage("calendar-tasks", {});
+  const [savedHabits, setSavedHabits] = useLocalStorage("calendar-habits", {});
+  
+  const { toggleTaskCompletion } = useTasksStorage();
+  const { toggleHabit } = useHabitsStorage();
   
   const formattedDate = formatDate(date);
   
@@ -39,6 +44,28 @@ const CalendarPage = () => {
     savedEnergyLevels,
     savedBreaks
   );
+
+  // Sync with Focus Today data
+  const [focusForToday, setFocusForToday] = useLocalStorage("focus-for-today", "");
+  const [priorities, setPriorities] = useLocalStorage("top-3-priorities", []);
+  const [currentEnergyLevel, setCurrentEnergyLevel] = useLocalStorage("current-energy-level", 5);
+  const [plannedBreaks, setPlannedBreaks] = useLocalStorage("planned-breaks", []);
+
+  useEffect(() => {
+    // On date change to today, update with the latest focus data
+    const today = new Date();
+    if (date && date.toDateString() === today.toDateString()) {
+      // Update energy level for today from stored current energy
+      const updatedEnergyLevels = { ...savedEnergyLevels };
+      updatedEnergyLevels[formattedDate] = currentEnergyLevel;
+      setSavedEnergyLevels(updatedEnergyLevels);
+      
+      // Update breaks for today from stored planned breaks
+      const updatedBreaks = { ...savedBreaks };
+      updatedBreaks[formattedDate] = plannedBreaks;
+      setSavedBreaks(updatedBreaks);
+    }
+  }, [date, currentEnergyLevel, plannedBreaks]);
 
   const openEditDialog = () => {
     setEnergyLevel(selectedDateData.energy);
@@ -69,8 +96,47 @@ const CalendarPage = () => {
     updatedHabits[formattedDate] = habits;
     setSavedHabits(updatedHabits);
 
+    // If it's today, also update the focus, priorities, energy and breaks
+    const today = new Date();
+    if (date && date.toDateString() === today.toDateString()) {
+      setCurrentEnergyLevel(energyLevel);
+      setPlannedBreaks(breaks);
+    }
+
     setIsEditDialogOpen(false);
     toast.success("Calendar data updated successfully");
+  };
+  
+  const handleToggleCalendarTask = (id: number, completed: boolean) => {
+    // Update in the task manager
+    toggleTaskCompletion(id);
+    
+    // Update in the calendar data
+    if (savedTasks[formattedDate]) {
+      const updatedTasks = { ...savedTasks };
+      updatedTasks[formattedDate] = savedTasks[formattedDate].map(task => 
+        task.id === id ? { ...task, completed: !completed } : task
+      );
+      setSavedTasks(updatedTasks);
+    }
+    
+    toast.success(`Task marked as ${completed ? 'not completed' : 'completed'}`);
+  };
+  
+  const handleToggleCalendarHabit = (id: number, completed: boolean) => {
+    // Toggle in habits store
+    toggleHabit(id);
+    
+    // Update in calendar data
+    if (savedHabits[formattedDate]) {
+      const updatedHabits = { ...savedHabits };
+      updatedHabits[formattedDate] = savedHabits[formattedDate].map(habit => 
+        habit.id === id ? { ...habit, completed: !completed } : habit
+      );
+      setSavedHabits(updatedHabits);
+    }
+    
+    toast.success(`Habit marked as ${completed ? 'not completed' : 'completed'}`);
   };
   
   return (
@@ -91,7 +157,7 @@ const CalendarPage = () => {
                   mode="single"
                   selected={date}
                   onSelect={setDate}
-                  className="rounded-md"
+                  className="rounded-md pointer-events-auto"
                 />
               </CardContent>
             </Card>
@@ -127,7 +193,10 @@ const CalendarPage = () => {
                   </TabsContent>
                   
                   <TabsContent value="habits" className="mt-0">
-                    <HabitsView habits={selectedDateData.habits} />
+                    <HabitsView 
+                      habits={selectedDateData.habits} 
+                      onToggleHabit={handleToggleCalendarHabit}
+                    />
                   </TabsContent>
                 </Tabs>
               </CardContent>

@@ -1,27 +1,35 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Target, Star, Edit, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLocalStorage } from '@/hooks/use-local-storage';
+import { toast } from 'sonner';
 
 const FocusToday: React.FC = () => {
-  const [mainFocus, setMainFocus] = useState('Complete the quarterly report and send it to the team for review');
+  const [mainFocus, setMainFocus] = useLocalStorage('focus-for-today', 'Complete the quarterly report and send it to the team for review');
   const [editingMainFocus, setEditingMainFocus] = useState(false);
   const [mainFocusInput, setMainFocusInput] = useState(mainFocus);
   
-  const [priorities, setPriorities] = useState([
+  const [priorities, setPriorities] = useLocalStorage('top-3-priorities', [
     'Finalize presentation slides',
     'Prepare meeting agenda',
     'Call client about proposal'
   ]);
+  
   const [editingPriority, setEditingPriority] = useState<number | null>(null);
   const [priorityInput, setPriorityInput] = useState('');
+
+  useEffect(() => {
+    setMainFocusInput(mainFocus);
+  }, [mainFocus]);
 
   const handleSaveMainFocus = () => {
     setMainFocus(mainFocusInput);
     setEditingMainFocus(false);
+    toast.success('Focus updated');
   };
 
   const handleSavePriority = (index: number) => {
@@ -29,6 +37,7 @@ const FocusToday: React.FC = () => {
     newPriorities[index] = priorityInput;
     setPriorities(newPriorities);
     setEditingPriority(null);
+    toast.success('Priority updated');
   };
 
   const handleEditPriority = (index: number) => {

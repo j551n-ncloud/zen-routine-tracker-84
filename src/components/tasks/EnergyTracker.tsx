@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Battery, Clock, Coffee, Plus, Edit } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
@@ -7,11 +7,13 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 
 const EnergyTracker: React.FC = () => {
-  const [energyLevel, setEnergyLevel] = useState(7);
-  const [peakHours, setPeakHours] = useState(['9:00 AM - 11:00 AM', '4:00 PM - 6:00 PM']);
-  const [breaks, setBreaks] = useState(['11:30 AM', '3:30 PM']);
+  const [energyLevel, setEnergyLevel] = useLocalStorage('current-energy-level', 7);
+  const [peakHours, setPeakHours] = useLocalStorage('peak-hours', ['9:00 AM - 11:00 AM', '4:00 PM - 6:00 PM']);
+  const [breaks, setBreaks] = useLocalStorage('planned-breaks', ['11:30 AM', '3:30 PM']);
+  
   const [newBreak, setNewBreak] = useState('');
   const [isAddingBreak, setIsAddingBreak] = useState(false);
   const [editingPeakHour, setEditingPeakHour] = useState<number | null>(null);
@@ -61,6 +63,36 @@ const EnergyTracker: React.FC = () => {
     } else {
       toast.error('Please enter valid peak hours');
     }
+  };
+
+  // Sync with calendar for today's date if on task page
+  useEffect(() => {
+    // Try to get energy level and breaks for today from calendar data
+    try {
+      const today = formatDate(new Date());
+      
+      const energyLevelsData = localStorage.getItem("energy-levels");
+      if (energyLevelsData) {
+        const savedEnergyLevels = JSON.parse(energyLevelsData);
+        if (savedEnergyLevels[today] !== undefined) {
+          setEnergyLevel(savedEnergyLevels[today]);
+        }
+      }
+      
+      const breaksData = localStorage.getItem("breaks");
+      if (breaksData) {
+        const savedBreaks = JSON.parse(breaksData);
+        if (savedBreaks[today] && savedBreaks[today].length > 0) {
+          setBreaks(savedBreaks[today]);
+        }
+      }
+    } catch (error) {
+      console.error("Error synchronizing with calendar data:", error);
+    }
+  }, []);
+
+  const formatDate = (date: Date): string => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   };
 
   return (

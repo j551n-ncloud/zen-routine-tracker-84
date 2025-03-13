@@ -3,7 +3,6 @@ import React from "react";
 import { CheckCircle, X, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useHabitsStorage } from "@/hooks/use-habits-storage";
 
 interface HabitsViewProps {
   habits: Array<{
@@ -11,14 +10,16 @@ interface HabitsViewProps {
     name: string;
     completed: boolean;
   }>;
+  onToggleHabit?: (id: number, completed: boolean) => void;
 }
 
-const HabitsView: React.FC<HabitsViewProps> = ({ habits }) => {
-  const { toggleHabit } = useHabitsStorage();
-
+const HabitsView: React.FC<HabitsViewProps> = ({ habits, onToggleHabit }) => {
   const handleToggleHabit = (id: number, completed: boolean) => {
-    toggleHabit(id);
-    toast.success(`Habit marked as ${completed ? 'not completed' : 'completed'}`);
+    if (onToggleHabit) {
+      onToggleHabit(id, completed);
+    } else {
+      toast.success(`Habit marked as ${completed ? 'not completed' : 'completed'}`);
+    }
   };
 
   return (
