@@ -25,9 +25,7 @@ RUN npm run build
 RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'nginx -g "daemon off;" &' >> /app/start.sh && \
     echo 'cd /app/dist && NODE_ENV=production npx serve -s . -l 8080' >> /app/start.sh && \
-    chmod +x /app/start.sh && \
-    cat /app/start.sh && \
-    ls -la /app/start.sh
+    chmod +x /app/start.sh
 
 # Expose the port
 EXPOSE 8080
