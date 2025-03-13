@@ -7,7 +7,8 @@ services:
       context: .
       dockerfile: Dockerfile.nginx
     ports:
-      - "89:80"
+      - "89:80"    # Normal frontend traffic
+      - "3001:81"  # API traffic
     depends_on:
       - frontend
       - backend
