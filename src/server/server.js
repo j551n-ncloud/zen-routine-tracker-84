@@ -35,6 +35,16 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Path normalization middleware - this helps with Cloudflare Tunnels path handling
+app.use((req, res, next) => {
+  // Normalize path by removing double slashes and ensuring a leading slash
+  req.url = ('/' + req.url.replace(/\/+/g, '/')).replace(/\/+$/, '');
+  if (req.url === '') req.url = '/';
+  
+  console.log(`Normalized URL: ${req.url}`);
+  next();
+});
+
 // Support multiple path formats for data access
 const handleDataGet = (req, res) => {
   try {
@@ -53,7 +63,7 @@ const handleDataGet = (req, res) => {
     }
   } catch (error) {
     console.error('Error retrieving data:', error);
-    return res.status(500).json({ error: 'Failed to retrieve data' });
+    return res.status(500).json({ error: 'Failed to retrieve data', details: error.message });
   }
 };
 
@@ -76,12 +86,12 @@ const handleDataPost = (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     console.error('Error saving data:', error);
-    return res.status(500).json({ error: 'Failed to save data' });
+    return res.status(500).json({ error: 'Failed to save data', details: error.message });
   }
 };
 
 // Handle all possible path formats
-// 1. /data/:key
+// 1. /data/:key  
 app.get('/data/:key', handleDataGet);
 app.post('/data/:key', handleDataPost);
 
@@ -89,9 +99,26 @@ app.post('/data/:key', handleDataPost);
 app.get('/api/data/:key', handleDataGet);
 app.post('/api/data/:key', handleDataPost);
 
-// 3. api/data/:key (without leading slash)
-app.get('api/data/:key', handleDataGet);
-app.post('api/data/:key', handleDataPost);
+// 3. api/data/:key (without leading slash) - handled by the normalization middleware
+
+// Add a catch-all route for data endpoints to help with unusual path formats
+app.use('/*/data/:key', (req, res) => {
+  // Extract the key from the end of the path
+  const pathParts = req.path.split('/');
+  const key = pathParts[pathParts.length - 1];
+  
+  console.log(`Catch-all route handling data request for key: ${key}`);
+  
+  req.params.key = key;
+  
+  if (req.method === 'GET') {
+    return handleDataGet(req, res);
+  } else if (req.method === 'POST') {
+    return handleDataPost(req, res);
+  } else {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+});
 
 // Add explicit handling for OPTIONS requests
 app.options('*', (req, res) => {
@@ -106,9 +133,10 @@ app.use('*', (req, res) => {
   console.log(`404 Not Found: ${req.originalUrl}`);
   res.status(404).json({ 
     error: 'Not found',
-    message: 'Valid endpoints are /data/:key, /api/data/:key, api/data/:key, and /health',
+    message: 'Valid endpoints are /data/:key, /api/data/:key, and any path ending with /data/:key',
     method: req.method,
-    url: req.originalUrl
+    url: req.originalUrl,
+    normalizedUrl: req.url
   });
 });
 
