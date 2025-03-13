@@ -43,6 +43,18 @@ export function useDbInit() {
         if (isMounted) {
           setError(err instanceof Error ? err : new Error(String(err)));
           
+          // If this is a browser environment, enable mock mode
+          if (typeof window !== 'undefined') {
+            console.log('Browser environment detected, enabling mock mode');
+            setMockMode(true);
+            localStorage.setItem('zentracker-mock-mode', 'true');
+            toast.info("Browser environment detected. Using local storage for data.");
+            setIsInitialized(true);
+            setError(null);
+            setIsLoading(false);
+            return;
+          }
+          
           // Auto-enable mock mode after all retries fail
           if (retryCount >= MAX_RETRIES) {
             console.log('Max retries reached, enabling mock mode');
