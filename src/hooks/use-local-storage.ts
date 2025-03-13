@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { fetchData, saveData } from "./api-utils";
-import { toast } from "sonner";
 
 export function useLocalStorage<T>(key: string, initialValue: T) {
   // State to store our value
@@ -22,7 +21,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
 
   // If the server-side data changes, update the local state
   useEffect(() => {
-    // Sync with server when the component mounts
+    // Sync with server when the component mounts - with rate limiting
     const syncFromServer = async () => {
       try {
         console.log(`Syncing from server for key: ${key}`);
@@ -33,18 +32,19 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
           setStoredValue(data);
           // Update localStorage with server data
           localStorage.setItem(key, JSON.stringify(data));
+          console.log(`Successfully synced ${key} from server`);
+        } else {
+          console.log(`No data found on server for key: ${key}, using local value`);
         }
       } catch (error) {
         console.error("Error syncing from server:", error);
-        
-        // Don't show toast errors for server sync issues
-        // As it's a background operation and too noisy for users
         
         // If server sync fails, fall back to local storage
         const savedItem = localStorage.getItem(key);
         if (savedItem) {
           try {
             const parsedItem = JSON.parse(savedItem);
+            console.log(`Using local data for key: ${key}`);
             setStoredValue(parsedItem);
           } catch (parseError) {
             console.error("Error parsing localStorage item:", parseError);
@@ -53,11 +53,18 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       }
     };
 
-    // Add a small delay to prevent too many simultaneous requests
-    // Also add randomization to the delay to distribute requests
+    // Use a staggered delay strategy to avoid overwhelming the server
+    // Calculate delay based on the key's string content for deterministic but varied delays
+    const calculateDelay = () => {
+      // Hash the key to a number (simple hash function)
+      const hash = key.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+      // Use the hash to create a delay between 1-5 seconds
+      return 1000 + (hash % 4000);
+    };
+
     const timeoutId = setTimeout(() => {
       syncFromServer();
-    }, 500 + Math.random() * 2000); // Random delay between 500ms and 2.5s
+    }, calculateDelay());
 
     return () => clearTimeout(timeoutId);
   }, [key]);
@@ -79,17 +86,18 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
         
         // Send to server using our helper with a small delay to reduce concurrent requests
         setTimeout(() => {
-          saveData(key, valueToStore).catch(error => {
+          saveData(key, valueToStore).then(() => {
+            console.log(`Successfully saved ${key} to server`);
+          }).catch(error => {
             console.error("Error saving to server:", error);
             // We're intentionally not showing toasts for these errors
             // as they can be noisy if the server is temporarily unavailable
             // and we have the data safely in localStorage
           });
-        }, Math.random() * 1000); // Random delay up to 1 second
+        }, 300); // Small delay to batch potential multiple updates
       }
     } catch (error) {
       console.error("Error writing to localStorage:", error);
-      toast.error("Failed to save data locally");
     }
   };
 

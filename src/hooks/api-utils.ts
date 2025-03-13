@@ -25,128 +25,152 @@ export const getApiBaseUrl = (): string => {
   return 'http://localhost:3001';
 };
 
-// Helper function to make data requests
+// Enhanced logging function
+const logApiCall = (message: string, data?: any) => {
+  console.log(`[API] ${message}`, data ? data : '');
+};
+
+// Helper function to make data requests with retry logic for custom domain
 export const fetchData = async <T>(key: string): Promise<T | null> => {
   const apiBaseUrl = getApiBaseUrl();
   
   // Ensure the key matches patterns recognized by the server
   const formattedKey = ensureValidKey(key);
-  let endpoint = '';
+  const isCustomDomain = window.location.hostname === 'habit.j551n.com';
+  const isRecognizedKey = isRecognizedPattern(formattedKey);
   
-  // For the custom domain, we need a different endpoint structure
-  if (window.location.hostname === 'habit.j551n.com') {
-    // Special handling for recognized patterns that can be accessed directly
-    if (isRecognizedPattern(formattedKey)) {
-      // Try direct access first (no /api prefix)
-      endpoint = `${apiBaseUrl}/${formattedKey}`;
-    } else {
-      // For other keys, use the /api/data/ prefix
-      endpoint = `${apiBaseUrl}/api/${formattedKey}`;
+  // Create an array of endpoints to try in order
+  const endpointsToTry = [];
+  
+  if (isCustomDomain) {
+    // For custom domain, try these patterns in order
+    if (isRecognizedKey) {
+      // Direct access without /api prefix for recognized patterns
+      endpointsToTry.push(`${apiBaseUrl}/${formattedKey}`);
+    }
+    
+    // With /api prefix
+    endpointsToTry.push(`${apiBaseUrl}/api/${formattedKey}`);
+    
+    // Try with data prefix as fallback
+    if (!formattedKey.startsWith('data/')) {
+      endpointsToTry.push(`${apiBaseUrl}/api/data/${formattedKey.replace('data/', '')}`);
     }
   } else {
-    // For other environments, just use the regular endpoint
-    endpoint = `${apiBaseUrl}/${formattedKey}`;
+    // Standard endpoint for other environments
+    endpointsToTry.push(`${apiBaseUrl}/${formattedKey}`);
   }
   
-  console.log(`Fetching data from: ${endpoint}`);
+  logApiCall(`Trying to fetch data for key: ${key}`);
+  logApiCall(`Endpoints to try: ${JSON.stringify(endpointsToTry)}`);
   
-  try {
-    const response = await fetch(endpoint);
-    
-    if (!response.ok) {
-      // If the first attempt fails and we're on the custom domain,
-      // try the alternative pattern as a fallback
-      if (window.location.hostname === 'habit.j551n.com') {
-        // If we tried direct access first, now try with /api prefix
-        if (isRecognizedPattern(formattedKey) && !endpoint.includes('/api/')) {
-          const alternateEndpoint = `${apiBaseUrl}/api/${formattedKey}`;
-          console.log(`First attempt failed, trying alternate endpoint: ${alternateEndpoint}`);
-          
-          const alternateResponse = await fetch(alternateEndpoint);
-          if (alternateResponse.ok) {
-            return await alternateResponse.json();
-          }
-        }
+  let lastError = null;
+  
+  // Try each endpoint in sequence until one works
+  for (const endpoint of endpointsToTry) {
+    try {
+      logApiCall(`Fetching from: ${endpoint}`);
+      
+      const response = await fetch(endpoint);
+      
+      if (!response.ok) {
+        logApiCall(`Endpoint ${endpoint} responded with ${response.status}`);
+        lastError = new Error(`Server responded with ${response.status}`);
+        continue; // Try the next endpoint
       }
       
-      throw new Error(`Server responded with ${response.status}`);
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        logApiCall(`Expected JSON response but got ${contentType}`);
+        lastError = new Error(`Expected JSON response but got ${contentType}`);
+        continue; // Try the next endpoint
+      }
+      
+      const data = await response.json();
+      logApiCall(`Successfully fetched data from ${endpoint}`, { keyLength: key.length, hasData: !!data });
+      return data;
+    } catch (error) {
+      logApiCall(`Error fetching from ${endpoint}:`, error);
+      lastError = error;
+      // Continue to the next endpoint
     }
-    
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      console.warn(`Expected JSON response but got ${contentType}`);
-      return null;
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`Error fetching from ${endpoint}:`, error);
-    throw error;
   }
+  
+  // If we get here, all endpoints failed
+  if (lastError) {
+    throw lastError;
+  }
+  
+  return null;
 };
 
-// Helper function to save data
+// Helper function to save data with retry logic for custom domain
 export const saveData = async <T>(key: string, value: T): Promise<void> => {
   const apiBaseUrl = getApiBaseUrl();
   
   // Ensure the key matches patterns recognized by the server
   const formattedKey = ensureValidKey(key);
-  let endpoint = '';
+  const isCustomDomain = window.location.hostname === 'habit.j551n.com';
+  const isRecognizedKey = isRecognizedPattern(formattedKey);
   
-  // For the custom domain, we need a different endpoint structure
-  if (window.location.hostname === 'habit.j551n.com') {
-    // Special handling for recognized patterns that can be accessed directly
-    if (isRecognizedPattern(formattedKey)) {
-      // Try direct access first (no /api prefix)
-      endpoint = `${apiBaseUrl}/${formattedKey}`;
-    } else {
-      // For other keys, use the /api/data/ prefix
-      endpoint = `${apiBaseUrl}/api/${formattedKey}`;
+  // Create an array of endpoints to try in order
+  const endpointsToTry = [];
+  
+  if (isCustomDomain) {
+    // For custom domain, try these patterns in order
+    if (isRecognizedKey) {
+      // Direct access without /api prefix for recognized patterns
+      endpointsToTry.push(`${apiBaseUrl}/${formattedKey}`);
+    }
+    
+    // With /api prefix
+    endpointsToTry.push(`${apiBaseUrl}/api/${formattedKey}`);
+    
+    // Try with data prefix as fallback
+    if (!formattedKey.startsWith('data/')) {
+      endpointsToTry.push(`${apiBaseUrl}/api/data/${formattedKey.replace('data/', '')}`);
     }
   } else {
-    // For other environments, just use the regular endpoint
-    endpoint = `${apiBaseUrl}/${formattedKey}`;
+    // Standard endpoint for other environments
+    endpointsToTry.push(`${apiBaseUrl}/${formattedKey}`);
   }
   
-  console.log(`Saving data to: ${endpoint}`);
+  logApiCall(`Trying to save data for key: ${key}`);
+  logApiCall(`Endpoints to try: ${JSON.stringify(endpointsToTry)}`);
   
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ value }),
-    });
-    
-    if (!response.ok) {
-      // If the first attempt fails and we're on the custom domain,
-      // try the alternative pattern as a fallback
-      if (window.location.hostname === 'habit.j551n.com') {
-        // If we tried direct access first, now try with /api prefix
-        if (isRecognizedPattern(formattedKey) && !endpoint.includes('/api/')) {
-          const alternateEndpoint = `${apiBaseUrl}/api/${formattedKey}`;
-          console.log(`First attempt failed, trying alternate endpoint: ${alternateEndpoint}`);
-          
-          const alternateResponse = await fetch(alternateEndpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ value }),
-          });
-          
-          if (alternateResponse.ok) {
-            return;
-          }
-        }
+  let lastError = null;
+  
+  // Try each endpoint in sequence until one works
+  for (const endpoint of endpointsToTry) {
+    try {
+      logApiCall(`Saving to: ${endpoint}`);
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ value }),
+      });
+      
+      if (!response.ok) {
+        logApiCall(`Endpoint ${endpoint} responded with ${response.status}`);
+        lastError = new Error(`Server responded with ${response.status}`);
+        continue; // Try the next endpoint
       }
       
-      throw new Error(`Server responded with ${response.status}`);
+      logApiCall(`Successfully saved data to ${endpoint}`);
+      return; // Success, exit the function
+    } catch (error) {
+      logApiCall(`Error saving to ${endpoint}:`, error);
+      lastError = error;
+      // Continue to the next endpoint
     }
-  } catch (error) {
-    console.error(`Error saving to ${endpoint}:`, error);
-    throw error;
+  }
+  
+  // If we get here, all endpoints failed
+  if (lastError) {
+    throw lastError;
   }
 };
 

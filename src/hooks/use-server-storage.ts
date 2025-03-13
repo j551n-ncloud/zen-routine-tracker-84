@@ -20,8 +20,10 @@ export function useServerStorage<T>(key: string, initialValue: T) {
         const data = await fetchData<T>(key);
         
         if (data) {
+          console.log(`Successfully fetched data for key: ${key}`);
           setStoredValue(data);
         } else {
+          console.log(`No data found for key: ${key}, using initial value`);
           // If no data on server, use initial value
           setStoredValue(initialValue);
           
@@ -29,11 +31,12 @@ export function useServerStorage<T>(key: string, initialValue: T) {
           setTimeout(async () => {
             try {
               await saveData(key, initialValue);
+              console.log(`Successfully saved initial value for key: ${key}`);
             } catch (saveError) {
               console.warn(`Could not save initial value for ${key}:`, saveError);
               // Don't show toast for this case
             }
-          }, Math.random() * 1000); // Random delay up to 1 second
+          }, 300); // Small consistent delay
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -41,8 +44,8 @@ export function useServerStorage<T>(key: string, initialValue: T) {
         setStoredValue(initialValue);
         
         // Only show the toast for unexpected errors
-        // Skip 404 errors on the custom domain as they're expected during initial setup
-        if (!(window.location.hostname === 'habit.j551n.com' && String(err).includes('404'))) {
+        // Skip errors on the custom domain as they're expected during initial setup
+        if (window.location.hostname !== 'habit.j551n.com') {
           toast.error("Failed to load data from server");
         }
       } finally {
@@ -50,11 +53,17 @@ export function useServerStorage<T>(key: string, initialValue: T) {
       }
     };
 
-    // Add a substantial delay to prevent too many simultaneous requests
-    // This is especially important on initial page load
+    // Calculate a deterministic but varied delay based on the key
+    const calculateDelay = () => {
+      // Hash the key to a number (simple hash function)
+      const hash = key.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+      // Use the hash to create a delay between 1-3 seconds
+      return 1000 + (hash % 2000);
+    };
+
     const timeoutId = setTimeout(() => {
       fetchDataFromServer();
-    }, 1000 + Math.random() * 3000); // Random delay between 1s and 4s
+    }, calculateDelay());
 
     return () => clearTimeout(timeoutId);
   }, [key, initialValue]);
@@ -71,13 +80,14 @@ export function useServerStorage<T>(key: string, initialValue: T) {
       
       // Save to server using our helper
       await saveData(key, valueToStore);
+      console.log(`Successfully saved data for key: ${key}`);
     } catch (err) {
       console.error('Error saving data:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
       
       // Only show the toast for unexpected errors
-      // Skip 404 errors on the custom domain as they're expected during initial setup
-      if (!(window.location.hostname === 'habit.j551n.com' && String(err).includes('404'))) {
+      // Skip errors on the custom domain as they're expected during initial setup
+      if (window.location.hostname !== 'habit.j551n.com') {
         toast.error("Failed to save data to server");
       }
     }
