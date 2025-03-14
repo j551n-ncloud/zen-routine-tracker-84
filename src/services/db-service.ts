@@ -13,6 +13,9 @@ export interface CountResult {
   count: number;
 }
 
+// Table names as literal types to match Supabase type system
+type TableName = 'key_value_store' | 'users';
+
 // State variables
 let mockMode = false;
 
@@ -37,7 +40,7 @@ export function setMockMode(value: boolean): void {
 
 // Execute SQL queries using Supabase
 export async function executeQuery<T>(
-  table: string,
+  table: TableName,
   action: 'select' | 'insert' | 'update' | 'delete',
   data?: any,
   filters?: Record<string, any>
