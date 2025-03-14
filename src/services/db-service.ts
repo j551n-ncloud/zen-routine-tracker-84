@@ -170,8 +170,6 @@ export async function initDatabase(): Promise<boolean> {
     
     console.log('Successfully connected to Supabase');
     
-    // Create necessary tables if they don't exist - handled by migrations in Supabase
-    
     return true;
   } catch (error) {
     console.error('Failed to connect to Supabase:', error);

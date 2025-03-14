@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,10 +18,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { RowDataPacket } from "mysql2";
+import { supabase } from "@/integrations/supabase/client";
 
 // Define interface for user count row
-interface UserCountRow extends RowDataPacket {
+interface UserCountRow {
   count: number;
 }
 
@@ -75,22 +76,35 @@ const Settings = () => {
     setIsUpdatingUser(true);
     try {
       // Verify current password
-      const users = await executeQuery<UserCountRow[]>(
-        "SELECT COUNT(*) as count FROM users WHERE username = ? AND password = ?",
-        [user?.username, values.currentPassword]
-      );
+      const { data: users, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', user?.username)
+        .eq('password', values.currentPassword)
+        .limit(1);
       
-      if (!users || users.length === 0 || users[0]?.count === 0) {
+      if (error) {
+        throw error;
+      }
+      
+      if (!users || users.length === 0) {
         toast.error("Current password is incorrect");
         setIsUpdatingUser(false);
         return;
       }
       
       // Update username and password
-      await executeQuery(
-        "UPDATE users SET username = ?, password = ? WHERE username = ?",
-        [values.username, values.newPassword, user?.username]
-      );
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ 
+          username: values.username, 
+          password: values.newPassword 
+        })
+        .eq('username', user?.username);
+      
+      if (updateError) {
+        throw updateError;
+      }
       
       toast.success("User settings updated successfully");
       setUserSettingsOpen(false);
