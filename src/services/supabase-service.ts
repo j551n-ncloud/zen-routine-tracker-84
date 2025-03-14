@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import config from './api-config';
 import { toast } from 'sonner';
@@ -229,45 +230,57 @@ export async function executeQuery<T>(
   }
   
   try {
-    let query = supabase.from(table);
+    let queryBuilder = supabase.from(table);
     
     switch (operation) {
-      case 'select':
-        query = query.select(params.select || '*');
+      case 'select': {
+        const query = queryBuilder.select(params.select || '*');
         
         // Apply filters
         if (params.eq) {
           Object.entries(params.eq).forEach(([key, value]) => {
-            query = query.eq(key, value);
+            query.eq(key, value as string);
           });
         }
         
         if (params.limit) {
-          query = query.limit(params.limit);
+          query.limit(params.limit);
         }
         
         const { data, error } = await query;
         if (error) throw error;
         return data as T;
+      }
         
-      case 'insert':
-        const { data: insertData, error: insertError } = await query.insert(params.data);
-        if (insertError) throw insertError;
-        return insertData as T;
+      case 'insert': {
+        const { data, error } = await queryBuilder.insert(params.data);
+        if (error) throw error;
+        return data as T;
+      }
         
-      case 'update':
-        const { data: updateData, error: updateError } = await query
-          .update(params.data)
-          .eq(params.eq.column, params.eq.value);
-        if (updateError) throw updateError;
-        return updateData as T;
+      case 'update': {
+        let query = queryBuilder.update(params.data);
+        if (params.eq) {
+          Object.entries(params.eq).forEach(([key, value]) => {
+            query = query.eq(key, value as string);
+          });
+        }
+        const { data, error } = await query;
+        if (error) throw error;
+        return data as T;
+      }
         
-      case 'delete':
-        const { data: deleteData, error: deleteError } = await query
-          .delete()
-          .eq(params.eq.column, params.eq.value);
-        if (deleteError) throw deleteError;
-        return deleteData as T;
+      case 'delete': {
+        let query = queryBuilder.delete();
+        if (params.eq) {
+          Object.entries(params.eq).forEach(([key, value]) => {
+            query = query.eq(key, value as string);
+          });
+        }
+        const { data, error } = await query;
+        if (error) throw error;
+        return data as T;
+      }
         
       default:
         throw new Error(`Unsupported operation: ${operation}`);
