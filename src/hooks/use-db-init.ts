@@ -1,7 +1,8 @@
 
 import { useEffect, useState } from 'react';
-import { initSupabase } from '../services/supabase-service';
+import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
+import { initDatabase } from '../services/db-service';
 
 export function useDbInit() {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -16,19 +17,19 @@ export function useDbInit() {
     const init = async () => {
       try {
         setIsLoading(true);
-        console.log('Initializing Supabase connection...');
-        const success = await initSupabase();
+        console.log('Initializing database connection...');
+        const success = await initDatabase();
         
         if (isMounted) {
           setIsInitialized(success);
           if (success) {
-            console.log('Supabase initialized successfully');
-            toast.success("Connected to Supabase successfully");
+            console.log('Database initialized successfully');
+            toast.success("Connected to database successfully");
           }
           setError(null);
         }
       } catch (err) {
-        console.error('Failed to initialize Supabase:', err);
+        console.error('Failed to initialize database:', err);
         
         if (isMounted) {
           setError(err instanceof Error ? err : new Error(String(err)));
@@ -36,7 +37,7 @@ export function useDbInit() {
           // Retry logic
           if (retryCount < MAX_RETRIES) {
             const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
-            console.log(`Retrying Supabase initialization in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+            console.log(`Retrying database initialization in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
             
             setTimeout(() => {
               if (isMounted) {

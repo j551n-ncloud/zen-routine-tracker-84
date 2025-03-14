@@ -14,7 +14,7 @@ export interface CountResult {
 }
 
 // Table names as literal types to match Supabase type system
-type TableName = 'key_value_store' | 'users';
+type TableName = 'key_value_store' | 'users' | 'profiles' | 'tasks' | 'habits' | 'habit_completions';
 
 // State variables
 let mockMode = false;
