@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '../services/supabase-service';
 import { toast } from 'sonner';
@@ -60,21 +59,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initialize();
   }, []);
   
-  // Login function
+  // Updated login function - Auto create users
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      // Supabase login
+      const email = `${username}@example.com`; // For demo purposes
+      
+      // Step 1: Try to sign up the user first (will fail silently if already exists)
+      try {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: email,
+          password: password,
+        });
+        
+        if (signUpError) {
+          console.log("User already exists or signup error:", signUpError);
+          // Continue to login attempt regardless of the error
+        } else {
+          console.log("New user signed up:", email);
+          // Give Supabase a moment to process the new user
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      } catch (signUpError) {
+        // Ignore the error and proceed to login
+        console.log("Sign up attempt error (ignored):", signUpError);
+      }
+      
+      // Step 2: Now attempt to sign in
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: `${username}@example.com`, // For demo purposes
+        email: email,
         password: password
       });
       
       if (error || !data.user) {
         toast.error("Invalid username or password");
+        console.error("Login error details:", error);
         return false;
       }
       
-      // Get user details from users table
+      // Step 3: Get user details from users table
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('username, is_admin')
@@ -82,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
         
       if (userError || !userData) {
-        // If user record not found, create one
+        // If user record not found in users table, create one
         const newUser = {
           user_id: data.user.id,
           username: username,
