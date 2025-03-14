@@ -28,17 +28,12 @@ export function useServerStorage<T>(key: string, initialValue: T) {
           setStoredValue(initialValue);
           
           // Save the initial value to database
-          try {
-            await saveData(key, initialValue);
-            console.log(`Successfully saved initial value for key: ${key}`);
-          } catch (saveError) {
-            console.warn(`Could not save initial value for ${key}:`, saveError);
-          }
+          await saveData(key, initialValue);
+          console.log(`Successfully saved initial value for key: ${key}`);
         }
       } catch (err) {
         console.error('Error fetching data:', err);
         setError(err instanceof Error ? err : new Error(String(err)));
-        setStoredValue(initialValue);
         toast.error("Failed to load data from database");
       } finally {
         setIsLoading(false);

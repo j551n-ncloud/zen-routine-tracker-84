@@ -18,68 +18,20 @@ import Settings from "./pages/Settings";
 import DailyRoutine from "./pages/DailyRoutine";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import { useDbInit } from './hooks/use-db-init';
-import { Loader2, AlertCircle, RefreshCw, Database, Settings2 } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Database } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
-import ErrorFallback from "@/components/error/ErrorFallback";
-import config from './services/api-config';
-import { isMockMode } from './services/supabase-service';
 
 const queryClient = new QueryClient();
 
-// Mock database mode for preview environment
-const useMockDatabase = () => {
-  const [isMockDb, setIsMockDb] = useState(false);
-  
-  useEffect(() => {
-    const storedMode = localStorage.getItem('zentracker-mock-mode');
-    setIsMockDb(storedMode === 'true');
-  }, []);
-  
-  const toggleMockMode = () => {
-    const newMode = !isMockDb;
-    localStorage.setItem('zentracker-mock-mode', String(newMode));
-    setIsMockDb(newMode);
-    window.location.reload();
-  };
-  
-  return { isMockMode: isMockDb, toggleMockMode };
-};
-
 function App() {
   const { isInitialized, error, isLoading, retryCount, maxRetries } = useDbInit();
-  const { isMockMode: showingMockMode, toggleMockMode } = useMockDatabase();
   
-  // If mock mode is enabled, show the database mode indicator
+  // Show a connected indicator
   const ConnectionIndicator = () => {
-    if (isMockMode()) {
-      return (
-        <div className="fixed bottom-4 right-4 z-50 flex items-center space-x-2 bg-yellow-100 dark:bg-yellow-900 p-2 rounded-md shadow-md text-sm">
-          <Database className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-          <span className="text-yellow-700 dark:text-yellow-300">Mock Database Mode</span>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={toggleMockMode}
-            className="h-7 px-2 text-xs"
-          >
-            Try Supabase
-          </Button>
-        </div>
-      );
-    }
     return (
       <div className="fixed bottom-4 right-4 z-50 flex items-center space-x-2 bg-green-100 dark:bg-green-900 p-2 rounded-md shadow-md text-sm">
         <Database className="h-4 w-4 text-green-600 dark:text-green-400" />
         <span className="text-green-700 dark:text-green-300">Supabase Connected</span>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={toggleMockMode}
-          className="h-7 px-2 text-xs"
-        >
-          Use Mock
-        </Button>
       </div>
     );
   };
@@ -117,27 +69,18 @@ function App() {
           
           <p className="text-muted-foreground mb-4">
             {retryCount >= maxRetries 
-              ? "Maximum retry attempts reached. Continue in mock mode?"
-              : "ZenTracker is having trouble connecting to the database. Retrying automatically..."}
+              ? "Maximum retry attempts reached. Please check your connection."
+              : "ZenTracker is having trouble connecting to Supabase. Retrying automatically..."}
           </p>
 
           <div className="flex space-x-3 justify-center">
             <Button 
               onClick={() => window.location.reload()}
-              variant="outline"
+              variant="default"
               className="mt-2 px-4 py-2 rounded transition-colors inline-flex items-center"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Retry Connection
-            </Button>
-            
-            <Button 
-              onClick={toggleMockMode}
-              variant="default"
-              className="mt-2 px-4 py-2 rounded transition-colors inline-flex items-center"
-            >
-              <Database className="h-4 w-4 mr-2" />
-              Use Mock Database
             </Button>
           </div>
           

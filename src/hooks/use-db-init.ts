@@ -1,8 +1,7 @@
 
 import { useEffect, useState } from 'react';
-import { initSupabase, isMockMode, setMockMode } from '../services/supabase-service';
+import { initSupabase } from '../services/supabase-service';
 import { toast } from 'sonner';
-import config from '../services/api-config';
 
 export function useDbInit() {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -14,24 +13,6 @@ export function useDbInit() {
   useEffect(() => {
     let isMounted = true;
     
-    // Check if running in a browser environment
-    const isBrowser = typeof window !== 'undefined';
-    
-    // Check if mock mode is enabled in localStorage
-    const storedMockMode = localStorage.getItem('zentracker-mock-mode') === 'true';
-    
-    if (storedMockMode) {
-      console.log('Mock mode enabled from localStorage');
-      setMockMode(true);
-      
-      if (isMounted) {
-        setIsInitialized(true);
-        setIsLoading(false);
-        setError(null);
-      }
-      return;
-    }
-    
     const init = async () => {
       try {
         setIsLoading(true);
@@ -42,13 +23,7 @@ export function useDbInit() {
           setIsInitialized(success);
           if (success) {
             console.log('Supabase initialized successfully');
-            if (isMockMode()) {
-              toast.warning("Supabase not available. Using mock mode.", {
-                description: "Data will be stored locally in your browser."
-              });
-            } else {
-              toast.success("Connected to Supabase successfully");
-            }
+            toast.success("Connected to Supabase successfully");
           }
           setError(null);
         }
@@ -57,16 +32,6 @@ export function useDbInit() {
         
         if (isMounted) {
           setError(err instanceof Error ? err : new Error(String(err)));
-          
-          // Auto-enable mock mode after all retries fail
-          if (retryCount >= MAX_RETRIES) {
-            console.log('Max retries reached, enabling mock mode');
-            toast.error("Could not connect to database. Enabling offline mode.");
-            setMockMode(true);
-            setIsInitialized(true);
-            setError(null);
-            return;
-          }
           
           // Retry logic
           if (retryCount < MAX_RETRIES) {
@@ -99,8 +64,6 @@ export function useDbInit() {
     error, 
     isLoading, 
     retryCount, 
-    maxRetries: MAX_RETRIES,
-    isMockMode: isMockMode(),
-    setMockMode
+    maxRetries: MAX_RETRIES
   };
 }
