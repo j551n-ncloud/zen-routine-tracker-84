@@ -143,6 +143,68 @@ export async function getData(key: string): Promise<any> {
   }
 }
 
+// Create default admin user if no users exist
+export async function createDefaultUserIfNeeded(): Promise<boolean> {
+  try {
+    console.log('Checking if default admin user needs to be created...');
+    
+    // Check if any users exist
+    const { data: existingUsers, error } = await supabase
+      .from('users')
+      .select('*')
+      .limit(1);
+      
+    if (error) {
+      throw error;
+    }
+    
+    // If no users exist, create a default admin user
+    if (!existingUsers || existingUsers.length === 0) {
+      console.log('No users found, creating default admin user...');
+      
+      // First, create the auth user
+      const { data: authUser, error: authError } = await supabase.auth.signUp({
+        email: 'admin@example.com',
+        password: 'admin123',
+      });
+      
+      if (authError) {
+        throw authError;
+      }
+      
+      if (authUser && authUser.user) {
+        console.log('Created auth user:', authUser.user.id);
+        
+        // Then, insert into users table
+        const { error: userError } = await supabase
+          .from('users')
+          .insert({
+            id: authUser.user.id,
+            username: 'admin',
+            password: 'admin123', // This is just for reference, actual auth happens via Supabase Auth
+            is_admin: true
+          });
+          
+        if (userError) {
+          throw userError;
+        }
+        
+        console.log('Default admin user created successfully');
+        toast.success('Default admin user created (admin/admin123)');
+        return true;
+      }
+    } else {
+      console.log('Users already exist, skipping default user creation');
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error creating default admin user:', error);
+    toast.error('Failed to create default admin user');
+    return false;
+  }
+}
+
 // Initialize the database - check if Supabase is available
 export async function initDatabase(): Promise<boolean> {
   // Check for localStorage setting first
@@ -172,6 +234,9 @@ export async function initDatabase(): Promise<boolean> {
     }
     
     console.log('Successfully connected to Supabase');
+    
+    // Create default admin user if needed
+    await createDefaultUserIfNeeded();
     
     return true;
   } catch (error) {
