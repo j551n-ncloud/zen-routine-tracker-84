@@ -1,7 +1,8 @@
 
 import { useEffect, useState } from 'react';
-import { initDatabase, setMockMode, isMockMode } from '../services/db-service';
+import { initSupabase, isMockMode, setMockMode } from '../services/supabase-service';
 import { toast } from 'sonner';
+import config from '../services/api-config';
 
 export function useDbInit() {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -34,25 +35,25 @@ export function useDbInit() {
     const init = async () => {
       try {
         setIsLoading(true);
-        console.log('Initializing database connection...');
-        const success = await initDatabase();
+        console.log('Initializing Supabase connection...');
+        const success = await initSupabase();
         
         if (isMounted) {
           setIsInitialized(success);
           if (success) {
-            console.log('Database initialized successfully');
+            console.log('Supabase initialized successfully');
             if (isMockMode()) {
-              toast.warning("SQLite REST API not available. Using mock mode.", {
+              toast.warning("Supabase not available. Using mock mode.", {
                 description: "Data will be stored locally in your browser."
               });
             } else {
-              toast.success("Connected to SQLite REST API successfully");
+              toast.success("Connected to Supabase successfully");
             }
           }
           setError(null);
         }
       } catch (err) {
-        console.error('Failed to initialize database:', err);
+        console.error('Failed to initialize Supabase:', err);
         
         if (isMounted) {
           setError(err instanceof Error ? err : new Error(String(err)));
@@ -70,7 +71,7 @@ export function useDbInit() {
           // Retry logic
           if (retryCount < MAX_RETRIES) {
             const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
-            console.log(`Retrying database initialization in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+            console.log(`Retrying Supabase initialization in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
             
             setTimeout(() => {
               if (isMounted) {

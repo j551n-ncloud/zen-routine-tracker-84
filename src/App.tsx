@@ -23,35 +23,36 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import ErrorFallback from "@/components/error/ErrorFallback";
 import config from './services/api-config';
+import { isMockMode } from './services/supabase-service';
 
 const queryClient = new QueryClient();
 
 // Mock database mode for preview environment
 const useMockDatabase = () => {
-  const [isMockMode, setIsMockMode] = useState(false);
+  const [isMockDb, setIsMockDb] = useState(false);
   
   useEffect(() => {
     const storedMode = localStorage.getItem('zentracker-mock-mode');
-    setIsMockMode(storedMode === 'true');
+    setIsMockDb(storedMode === 'true');
   }, []);
   
   const toggleMockMode = () => {
-    const newMode = !isMockMode;
+    const newMode = !isMockDb;
     localStorage.setItem('zentracker-mock-mode', String(newMode));
-    setIsMockMode(newMode);
+    setIsMockDb(newMode);
     window.location.reload();
   };
   
-  return { isMockMode, toggleMockMode };
+  return { isMockMode: isMockDb, toggleMockMode };
 };
 
 function App() {
-  const { isInitialized, error, isLoading, retryCount, maxRetries, isMockMode } = useDbInit();
-  const { toggleMockMode } = useMockDatabase();
+  const { isInitialized, error, isLoading, retryCount, maxRetries } = useDbInit();
+  const { isMockMode: showingMockMode, toggleMockMode } = useMockDatabase();
   
   // If mock mode is enabled, show the database mode indicator
   const ConnectionIndicator = () => {
-    if (isMockMode) {
+    if (isMockMode()) {
       return (
         <div className="fixed bottom-4 right-4 z-50 flex items-center space-x-2 bg-yellow-100 dark:bg-yellow-900 p-2 rounded-md shadow-md text-sm">
           <Database className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
@@ -62,7 +63,7 @@ function App() {
             onClick={toggleMockMode}
             className="h-7 px-2 text-xs"
           >
-            Try SQLite
+            Try Supabase
           </Button>
         </div>
       );
@@ -70,7 +71,7 @@ function App() {
     return (
       <div className="fixed bottom-4 right-4 z-50 flex items-center space-x-2 bg-green-100 dark:bg-green-900 p-2 rounded-md shadow-md text-sm">
         <Database className="h-4 w-4 text-green-600 dark:text-green-400" />
-        <span className="text-green-700 dark:text-green-300">SQLite REST Connected</span>
+        <span className="text-green-700 dark:text-green-300">Supabase Connected</span>
         <Button 
           variant="outline" 
           size="sm" 
@@ -89,7 +90,7 @@ function App() {
         <div className="text-center max-w-md p-6 border rounded-lg shadow-sm">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-xl font-medium mb-2">Initializing ZenTracker</p>
-          <p className="text-muted-foreground mb-4">Connecting to SQLite REST API at {config.sqliteRest.url}...</p>
+          <p className="text-muted-foreground mb-4">Connecting to Supabase...</p>
           <div className="w-full bg-secondary rounded-full h-2.5 mb-2">
             <div className="bg-primary h-2.5 rounded-full animate-pulse" style={{ width: '100%' }}></div>
           </div>
@@ -111,7 +112,7 @@ function App() {
             <AlertCircle className="h-6 w-6 mx-auto mb-2" />
             <p className="font-semibold">Database Initialization Error</p>
             <p className="text-sm mt-2">{error.message}</p>
-            <p className="text-sm mt-2">Failed to connect to {config.sqliteRest.url}</p>
+            <p className="text-sm mt-2">Failed to connect to Supabase</p>
           </div>
           
           <p className="text-muted-foreground mb-4">
@@ -143,9 +144,9 @@ function App() {
           <div className="mt-4 text-xs text-muted-foreground">
             <p>If the problem persists, try:</p>
             <ul className="list-disc list-inside mt-1 text-left">
-              <li>Checking if SQLite REST API is running at {config.sqliteRest.url}</li>
-              <li>Verifying network connectivity to the API server</li>
-              <li>Checking CORS settings on the SQLite REST API</li>
+              <li>Checking if your Supabase environment variables are set correctly</li>
+              <li>Verifying network connectivity to Supabase</li>
+              <li>Making sure your Supabase project is active</li>
             </ul>
           </div>
         </div>

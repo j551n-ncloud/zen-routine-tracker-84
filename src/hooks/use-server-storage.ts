@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { getData, saveData } from "../services/db-service";
+import { getData, saveData } from "../services/supabase-service";
 import { toast } from "sonner";
 
 export function useServerStorage<T>(key: string, initialValue: T) {
