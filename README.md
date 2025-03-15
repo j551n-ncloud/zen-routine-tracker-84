@@ -1,4 +1,3 @@
-
 # Welcome to your Lovable project
 
 ## Project info
@@ -37,13 +36,33 @@ npm i
 npm run dev
 ```
 
-## Data Storage
+**Edit a file directly in GitHub**
 
-This application uses SQLite in the browser through the sql.js library. All data is stored locally in your browser's localStorage and persists between sessions.
+- Navigate to the desired file(s).
+- Click the "Edit" button (pencil icon) at the top right of the file view.
+- Make your changes and commit the changes.
 
-- No server is required for data storage
-- Data is saved automatically when you make changes
-- If you clear your browser's local storage, you will lose your data
+**Use GitHub Codespaces**
+
+- Navigate to the main page of your repository.
+- Click on the "Code" button (green button) near the top right.
+- Select the "Codespaces" tab.
+- Click on "New codespace" to launch a new Codespace environment.
+- Edit files directly within the Codespace and commit and push your changes once you're done.
+
+## What technologies are used for this project?
+
+This project is built with .
+
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
+
+## How can I deploy this project?
+
+Simply open [Lovable](https://lovable.dev/projects/2168413d-0709-4542-8c9d-07fd99900810) and click on Share -> Publish.
 
 ## I want to use a custom domain - is that possible?
 

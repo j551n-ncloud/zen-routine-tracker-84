@@ -5,9 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/providers/theme-provider";
-import { AuthProvider } from "@/hooks/use-auth";
 import Index from "./pages/Index";
-import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Habits from "./pages/Habits";
 import Tasks from "./pages/Tasks";
@@ -16,146 +14,31 @@ import Insights from "./pages/Insights";
 import Achievements from "./pages/Achievements";
 import Settings from "./pages/Settings";
 import DailyRoutine from "./pages/DailyRoutine";
-import PrivateRoute from "./components/auth/PrivateRoute";
-import { useDbInit } from './hooks/use-db-init';
-import { Loader2, AlertCircle, RefreshCw, Database } from 'lucide-react';
-import { Button } from "@/components/ui/button";
 
 const queryClient = new QueryClient();
 
-function App() {
-  const { isInitialized, error, isLoading, retryCount, maxRetries } = useDbInit();
-  
-  // Show a connected indicator
-  const ConnectionIndicator = () => {
-    return (
-      <div className="fixed bottom-4 right-4 z-50 flex items-center space-x-2 bg-green-100 dark:bg-green-900 p-2 rounded-md shadow-md text-sm">
-        <Database className="h-4 w-4 text-green-600 dark:text-green-400" />
-        <span className="text-green-700 dark:text-green-300">Supabase Connected</span>
-      </div>
-    );
-  };
-  
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <div className="text-center max-w-md p-6 border rounded-lg shadow-sm">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-xl font-medium mb-2">Initializing ZenTracker</p>
-          <p className="text-muted-foreground mb-4">Connecting to Supabase...</p>
-          <div className="w-full bg-secondary rounded-full h-2.5 mb-2">
-            <div className="bg-primary h-2.5 rounded-full animate-pulse" style={{ width: '100%' }}></div>
-          </div>
-          {retryCount > 0 && (
-            <p className="text-xs text-muted-foreground mt-4">
-              Retry attempt {retryCount}/{maxRetries}...
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
-  
-  if (!isInitialized && error) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <div className="text-center max-w-md p-6 border rounded-lg shadow-sm">
-          <div className="bg-destructive/10 text-destructive p-4 rounded-md mb-4">
-            <AlertCircle className="h-6 w-6 mx-auto mb-2" />
-            <p className="font-semibold">Database Initialization Error</p>
-            <p className="text-sm mt-2">{error.message}</p>
-            <p className="text-sm mt-2">Failed to connect to Supabase</p>
-          </div>
-          
-          <p className="text-muted-foreground mb-4">
-            {retryCount >= maxRetries 
-              ? "Maximum retry attempts reached. Please check your connection."
-              : "ZenTracker is having trouble connecting to Supabase. Retrying automatically..."}
-          </p>
-
-          <div className="flex space-x-3 justify-center">
-            <Button 
-              onClick={() => window.location.reload()}
-              variant="default"
-              className="mt-2 px-4 py-2 rounded transition-colors inline-flex items-center"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry Connection
-            </Button>
-          </div>
-          
-          <div className="mt-4 text-xs text-muted-foreground">
-            <p>If the problem persists, try:</p>
-            <ul className="list-disc list-inside mt-1 text-left">
-              <li>Checking if your Supabase environment variables are set correctly</li>
-              <li>Verifying network connectivity to Supabase</li>
-              <li>Making sure your Supabase project is active</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-        <AuthProvider>
-          <TooltipProvider>
-            <ConnectionIndicator />
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/" element={
-                  <PrivateRoute>
-                    <Index />
-                  </PrivateRoute>
-                } />
-                <Route path="/habits" element={
-                  <PrivateRoute>
-                    <Habits />
-                  </PrivateRoute>
-                } />
-                <Route path="/tasks" element={
-                  <PrivateRoute>
-                    <Tasks />
-                  </PrivateRoute>
-                } />
-                <Route path="/calendar" element={
-                  <PrivateRoute>
-                    <CalendarPage />
-                  </PrivateRoute>
-                } />
-                <Route path="/insights" element={
-                  <PrivateRoute>
-                    <Insights />
-                  </PrivateRoute>
-                } />
-                <Route path="/achievements" element={
-                  <PrivateRoute>
-                    <Achievements />
-                  </PrivateRoute>
-                } />
-                <Route path="/daily-routine" element={
-                  <PrivateRoute>
-                    <DailyRoutine />
-                  </PrivateRoute>
-                } />
-                <Route path="/settings" element={
-                  <PrivateRoute>
-                    <Settings />
-                  </PrivateRoute>
-                } />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  );
-}
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/habits" element={<Habits />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/insights" element={<Insights />} />
+            <Route path="/achievements" element={<Achievements />} />
+            <Route path="/daily-routine" element={<DailyRoutine />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
+  </QueryClientProvider>
+);
 
 export default App;

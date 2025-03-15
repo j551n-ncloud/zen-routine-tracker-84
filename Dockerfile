@@ -1,34 +1,21 @@
-
 FROM node:18-alpine
-
-# Install dependencies for MySQL and nginx
-RUN apk add --no-cache python3 make g++ wget nginx mysql-client
 
 # Create app directory
 WORKDIR /app
 
-# Install dependencies first (for better caching)
-COPY package*.json ./
-RUN npm install
+# Install git (needed for cloning) and other dependencies
+RUN apk add --no-cache git
 
-# Setup nginx config
-RUN mkdir -p /etc/nginx
-COPY nginx.conf /etc/nginx/nginx.conf
-
-# Copy project files
+# Copy project files into the container
 COPY . .
 
-# Build the app
-RUN npm run build
+# Install dependencies
+RUN npm install
 
-# Create start script and ensure it exists with proper formatting
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'nginx -g "daemon off;" &' >> /app/start.sh && \
-    echo 'cd /app/dist && NODE_ENV=production npx serve -s . -l 8080' >> /app/start.sh && \
-    chmod +x /app/start.sh
-
-# Expose the port
+# Expose the Vite development server port
+# Vite uses 5173 by default instead of 3000
 EXPOSE 8080
 
-# Start nginx and the application
-CMD ["/bin/sh", "/app/start.sh"]
+# Start the development server
+# Adding host flag to make the server accessible outside the container
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

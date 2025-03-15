@@ -95,10 +95,6 @@ export function useTasksStorage() {
     "zen-tracker-upcoming-tasks", 
     initialUpcomingTasks
   );
-  const [calendarTasks, setCalendarTasks] = useLocalStorage<Record<string, any[]>>(
-    "calendar-tasks",
-    {}
-  );
 
   const addTask = (task: Omit<Task, "id">) => {
     const allTasks = [...tasks, ...upcomingTasks];
@@ -129,33 +125,32 @@ export function useTasksStorage() {
     }
     
     // Update calendar task data for this date
-    updateCalendarTasks(taskToAdd);
-    
-    return newId;
-  };
-
-  const updateCalendarTasks = (task: Task) => {
-    const taskDate = ensureDate(task.dueDate);
-    const formattedDate = formatDate(taskDate);
-    
-    const simplifiedTask = {
-      id: task.id,
-      title: task.title,
-      completed: task.completed
-    };
-    
-    const updatedCalendarTasks = { ...calendarTasks };
-    
-    if (updatedCalendarTasks[formattedDate]) {
-      updatedCalendarTasks[formattedDate] = [
-        ...updatedCalendarTasks[formattedDate].filter(t => t.id !== task.id),
-        simplifiedTask
-      ];
-    } else {
-      updatedCalendarTasks[formattedDate] = [simplifiedTask];
+    try {
+      const formattedDate = formatDate(taskDate);
+      
+      const calendarTasksData = localStorage.getItem("calendar-tasks");
+      if (calendarTasksData) {
+        const savedTasks = JSON.parse(calendarTasksData);
+        
+        const simplifiedTask = {
+          id: newId,
+          title: task.title,
+          completed: false
+        };
+        
+        if (savedTasks[formattedDate]) {
+          savedTasks[formattedDate] = [...savedTasks[formattedDate], simplifiedTask];
+        } else {
+          savedTasks[formattedDate] = [simplifiedTask];
+        }
+        
+        localStorage.setItem("calendar-tasks", JSON.stringify(savedTasks));
+      }
+    } catch (error) {
+      console.error("Error updating calendar tasks:", error);
     }
     
-    setCalendarTasks(updatedCalendarTasks);
+    return newId;
   };
 
   const toggleTaskCompletion = (id: number) => {
@@ -170,8 +165,8 @@ export function useTasksStorage() {
       };
       setTasks(updatedTasks);
       
-      // Also update in calendar
-      updateTaskCompletionInCalendar(updatedTasks[taskIndex]);
+      // Also update in calendar if this is for today or a specific date
+      updateTaskInCalendar(updatedTasks[taskIndex]);
     } else {
       // Check in the upcoming tasks list
       const upcomingTaskIndex = upcomingTasks.findIndex(task => task.id === id);
@@ -184,24 +179,31 @@ export function useTasksStorage() {
         setUpcomingTasks(updatedUpcomingTasks);
         
         // Also update in calendar
-        updateTaskCompletionInCalendar(updatedUpcomingTasks[upcomingTaskIndex]);
+        updateTaskInCalendar(updatedUpcomingTasks[upcomingTaskIndex]);
       }
     }
   };
 
   // Helper to update a task in the calendar data
-  const updateTaskCompletionInCalendar = (task: Task) => {
-    const taskDate = ensureDate(task.dueDate);
-    const formattedDate = formatDate(taskDate);
-    
-    const updatedCalendarTasks = { ...calendarTasks };
-    
-    if (updatedCalendarTasks[formattedDate]) {
-      updatedCalendarTasks[formattedDate] = updatedCalendarTasks[formattedDate].map(t =>
-        t.id === task.id ? { ...t, completed: task.completed } : t
-      );
+  const updateTaskInCalendar = (task: Task) => {
+    try {
+      const taskDate = ensureDate(task.dueDate);
+      const formattedDate = formatDate(taskDate);
       
-      setCalendarTasks(updatedCalendarTasks);
+      const calendarTasksData = localStorage.getItem("calendar-tasks");
+      if (calendarTasksData) {
+        const savedTasks = JSON.parse(calendarTasksData);
+        
+        if (savedTasks[formattedDate]) {
+          savedTasks[formattedDate] = savedTasks[formattedDate].map((t: any) =>
+            t.id === task.id ? { ...t, completed: task.completed } : t
+          );
+          
+          localStorage.setItem("calendar-tasks", JSON.stringify(savedTasks));
+        }
+      }
+    } catch (error) {
+      console.error("Error updating task in calendar:", error);
     }
   };
 
@@ -215,19 +217,22 @@ export function useTasksStorage() {
     setUpcomingTasks(upcomingTasks.filter(task => task.id !== id));
     
     // Also remove from calendar tasks if present
-    removeTaskFromCalendar(id);
-  };
-
-  const removeTaskFromCalendar = (id: number) => {
-    const updatedCalendarTasks = { ...calendarTasks };
-    
-    // Look through all dates
-    for (const date in updatedCalendarTasks) {
-      if (updatedCalendarTasks[date].some(t => t.id === id)) {
-        updatedCalendarTasks[date] = updatedCalendarTasks[date].filter(t => t.id !== id);
-        setCalendarTasks(updatedCalendarTasks);
-        break;
+    try {
+      const calendarTasksData = localStorage.getItem("calendar-tasks");
+      if (calendarTasksData) {
+        const savedTasks = JSON.parse(calendarTasksData);
+        
+        // Look through all dates
+        for (const date in savedTasks) {
+          if (savedTasks[date].some((t: any) => t.id === id)) {
+            savedTasks[date] = savedTasks[date].filter((t: any) => t.id !== id);
+            localStorage.setItem("calendar-tasks", JSON.stringify(savedTasks));
+            break;
+          }
+        }
       }
+    } catch (error) {
+      console.error("Error removing task from calendar:", error);
     }
   };
 

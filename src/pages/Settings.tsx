@@ -5,120 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
 import AppLayout from "@/components/layout/AppLayout";
 import { useToast } from "@/hooks/use-toast";
-import { FileDown, FileUp, RefreshCw, Trash2, UserCog, Loader2 } from "lucide-react";
+import { FileDown, FileUp, RefreshCw, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useTheme } from "@/providers/theme-provider";
-import { useAuth } from "@/hooks/use-auth";
-import { executeQuery } from "@/services/db-service";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { supabase } from "@/integrations/supabase/client";
-
-// Define interface for user count row
-interface UserCountRow {
-  count: number;
-}
-
-// Define the form schema for user settings
-const userSettingsSchema = z.object({
-  username: z.string().min(3, {
-    message: "Username must be at least 3 characters.",
-  }),
-  currentPassword: z.string().min(1, {
-    message: "Current password is required.",
-  }),
-  newPassword: z.string().min(6, {
-    message: "New password must be at least 6 characters.",
-  }),
-});
 
 const Settings = () => {
   const { toast: uiToast } = useToast();
   const { theme, setTheme } = useTheme();
-  const { user, login, logout } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [weekStartsOnMonday, setWeekStartsOnMonday] = useState(true);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [userSettingsOpen, setUserSettingsOpen] = useState(false);
   const [importData, setImportData] = useState("");
-  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
-
-  // Setup form
-  const form = useForm<z.infer<typeof userSettingsSchema>>({
-    resolver: zodResolver(userSettingsSchema),
-    defaultValues: {
-      username: user?.username || "",
-      currentPassword: "",
-      newPassword: "",
-    },
-  });
-
-  // Reset form when user changes
-  useEffect(() => {
-    if (user) {
-      form.reset({
-        username: user.username,
-        currentPassword: "",
-        newPassword: "",
-      });
-    }
-  }, [user, form]);
-
-  // Handle user settings submission
-  const onSubmitUserSettings = async (values: z.infer<typeof userSettingsSchema>) => {
-    setIsUpdatingUser(true);
-    try {
-      // Verify current password
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', user?.username)
-        .eq('password', values.currentPassword)
-        .limit(1);
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (!users || users.length === 0) {
-        toast.error("Current password is incorrect");
-        setIsUpdatingUser(false);
-        return;
-      }
-      
-      // Update username and password
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ 
-          username: values.username, 
-          password: values.newPassword 
-        })
-        .eq('username', user?.username);
-      
-      if (updateError) {
-        throw updateError;
-      }
-      
-      toast.success("User settings updated successfully");
-      setUserSettingsOpen(false);
-      
-      // Re-login with new credentials
-      await logout();
-      await login(values.username, values.newPassword);
-    } catch (error) {
-      console.error("Failed to update user settings:", error);
-      toast.error("Failed to update user settings");
-    } finally {
-      setIsUpdatingUser(false);
-    }
-  };
 
   const handleExportData = () => {
     // Get all data from localStorage
@@ -222,30 +123,6 @@ const Settings = () => {
         </div>
         
         <div className="grid gap-6">
-          {user?.isAdmin && (
-            <Card>
-              <CardHeader>
-                <CardTitle>User Settings</CardTitle>
-                <CardDescription>Manage your account credentials</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Current Username</Label>
-                    <p className="text-base">{user?.username}</p>
-                  </div>
-                  <Button 
-                    variant="outline"
-                    onClick={() => setUserSettingsOpen(true)}
-                  >
-                    <UserCog className="mr-2 h-4 w-4" />
-                    Change Credentials
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          
           <Card>
             <CardHeader>
               <CardTitle>App Preferences</CardTitle>
@@ -414,80 +291,6 @@ const Settings = () => {
               Reset Everything
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* User Settings Dialog */}
-      <Dialog open={userSettingsOpen} onOpenChange={setUserSettingsOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Change Account Credentials</DialogTitle>
-            <DialogDescription>
-              Update your username and password
-            </DialogDescription>
-          </DialogHeader>
-          
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmitUserSettings)} className="space-y-4 py-4">
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="currentPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Current Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="newPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setUserSettingsOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isUpdatingUser}>
-                  {isUpdatingUser ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    "Save Changes"
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
         </DialogContent>
       </Dialog>
     </AppLayout>
