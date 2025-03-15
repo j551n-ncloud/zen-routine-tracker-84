@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getData, saveData } from "../services/db-service";
 
 export function useLocalStorage<T>(key: string, initialValue: T) {
   // State to store our value
@@ -14,19 +14,11 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
         setIsLoading(true);
         console.log(`Loading data for key: ${key}`);
         
-        // Try to get from Supabase
-        const { data, error } = await supabase
-          .from('key_value_store')
-          .select('value_data')
-          .eq('key_name', key)
-          .maybeSingle();
-        
-        if (error && !error.message.includes('No rows found')) {
-          throw error;
-        }
+        // Try to get from database using our helper
+        const data = await getData(key);
         
         if (data) {
-          setStoredValue(JSON.parse(data.value_data) as T);
+          setStoredValue(data as T);
           console.log(`Successfully loaded ${key} from database`);
         } else {
           console.log(`No data found in database for key: ${key}, using initial value`);
@@ -34,10 +26,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
           
           // Save the initial value to the database
           try {
-            await supabase.from('key_value_store').upsert({
-              key_name: key,
-              value_data: JSON.stringify(initialValue)
-            });
+            await saveData(key, initialValue);
             console.log(`Successfully saved initial value for key: ${key}`);
           } catch (saveError) {
             console.warn(`Could not save initial value for ${key}:`, saveError);
@@ -67,10 +56,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       setStoredValue(valueToStore);
       
       // Save to database
-      await supabase.from('key_value_store').upsert({
-        key_name: key,
-        value_data: JSON.stringify(valueToStore)
-      });
+      await saveData(key, valueToStore);
       console.log(`Successfully saved ${key} to database`);
     } catch (error) {
       console.error("Error saving data:", error);

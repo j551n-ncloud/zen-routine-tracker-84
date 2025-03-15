@@ -6,27 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Login: React.FC = () => {
   const { login, isAuthenticated, isLoading } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loggingIn, setLoggingIn] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoggingIn(true);
     try {
       await login(username, password);
-    } catch (err) {
-      let errorMessage = "An unexpected error occurred. Please try again.";
-      if (err.code === 'unauthorized') {
-        errorMessage = "You are not authorized to access this system.";
-      }
-      setError(errorMessage);
     } finally {
       setLoggingIn(false);
     }
@@ -56,17 +49,16 @@ const Login: React.FC = () => {
           <CardDescription className="text-center">
             Enter your credentials to access your dashboard
           </CardDescription>
-          <CardDescription className="text-center text-amber-600 font-semibold">
-            Note: This system is restricted to authorized users only
-          </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            {error && (
-              <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded">
-                {error}
-              </div>
-            )}
+            <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+              <Info className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+              <AlertDescription className="text-sm text-blue-700 dark:text-blue-300">
+                Default admin credentials: <span className="font-semibold">admin / admin123</span>
+              </AlertDescription>
+            </Alert>
+            
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
               <Input
@@ -90,7 +82,7 @@ const Login: React.FC = () => {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Contact your administrator if you need access
+              For demo: use admin/admin123 or any matching username/password
             </p>
           </CardContent>
           <CardFooter>

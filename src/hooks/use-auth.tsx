@@ -1,8 +1,6 @@
-
 import { useState, useEffect, createContext, useContext } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '../services/supabase-service';
 import { toast } from 'sonner';
-import * as authService from '@/services/auth-service';
 
 // Define types
 export interface User {
@@ -33,18 +31,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(true);
         
         // Check if user is already logged in with Supabase
-        const session = await authService.getCurrentSession();
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
           // Get user details from Supabase
-          const userData = await authService.getUserData(session.user.id);
+          const { data, error } = await supabase
+            .from('users')
+            .select('username, is_admin')
+            .eq('user_id', session.user.id)
+            .single();
             
-          if (userData) {
+          if (!error && data) {
             setUser({
-              username: userData.username,
-              isAdmin: !!userData.is_admin
+              username: data.username,
+              isAdmin: !!data.is_admin
             });
-            console.log("User loaded from Supabase session:", userData.username);
+            console.log("User loaded from Supabase session:", data.username);
           }
         }
       } catch (error) {
@@ -54,65 +56,85 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
     
-    // Set up Supabase auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          const userData = await authService.getUserData(session.user.id);
-          if (userData) {
-            setUser({
-              username: userData.username,
-              isAdmin: !!userData.is_admin
-            });
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-        }
-      }
-    );
-    
     initialize();
-    
-    // Cleanup subscription
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
   
-  // Login function
+  // Updated login function - Auto create users
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       const email = `${username}@example.com`; // For demo purposes
       
-      // Try to sign in
-      const authData = await authService.signIn(email, password);
-      
-      if (authData.user) {
-        const userData = await authService.getUserData(authData.user.id);
+      // Step 1: Try to sign up the user first (will fail silently if already exists)
+      try {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: email,
+          password: password,
+        });
         
-        if (userData) {
-          setUser({
-            username: userData.username,
-            isAdmin: !!userData.is_admin
-          });
-          toast.success(`Welcome back, ${userData.username}!`);
-          return true;
+        if (signUpError) {
+          console.log("User already exists or signup error:", signUpError);
+          // Continue to login attempt regardless of the error
+        } else {
+          console.log("New user signed up:", email);
+          // Give Supabase a moment to process the new user
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
+      } catch (signUpError) {
+        // Ignore the error and proceed to login
+        console.log("Sign up attempt error (ignored):", signUpError);
       }
       
-      return false;
+      // Step 2: Now attempt to sign in
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+      
+      if (error || !data.user) {
+        toast.error("Invalid username or password");
+        console.error("Login error details:", error);
+        return false;
+      }
+      
+      // Step 3: Get user details from users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('username, is_admin')
+        .eq('user_id', data.user.id)
+        .single();
+        
+      if (userError || !userData) {
+        // If user record not found in users table, create one
+        const newUser = {
+          user_id: data.user.id,
+          username: username,
+          is_admin: username.toLowerCase() === 'admin' ? true : false
+        };
+        
+        await supabase.from('users').insert(newUser);
+        
+        const authenticatedUser = {
+          username: username,
+          isAdmin: username.toLowerCase() === 'admin'
+        };
+        
+        setUser(authenticatedUser);
+        toast.success(`Welcome, ${authenticatedUser.username}!`);
+        return true;
+      }
+      
+      // Set authenticated user from database
+      const authenticatedUser = {
+        username: userData.username,
+        isAdmin: !!userData.is_admin
+      };
+      
+      setUser(authenticatedUser);
+      toast.success(`Welcome back, ${authenticatedUser.username}!`);
+      return true;
     } catch (error) {
-      console.error("Authentication error:", error);
-      
-      // Handle specific error codes
-      if (error.code === '23505') {
-        toast.error("Username already exists. Please contact your administrator.");
-      } else if (error.code === 'unauthorized') {
-        toast.error("You are not authorized to access this system.");
-      } else {
-        toast.error("Authentication failed. Please try again.");
-      }
-      
+      console.error("Login error:", error);
+      toast.error("Login failed. Please try again.");
       return false;
     }
   };
@@ -120,7 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout function
   const logout = async () => {
     try {
-      await authService.signOut();
+      await supabase.auth.signOut();
       setUser(null);
       toast.success("You've been logged out");
     } catch (error) {
