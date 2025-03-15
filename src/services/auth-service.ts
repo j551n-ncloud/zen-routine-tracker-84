@@ -25,6 +25,7 @@ export const signUp = async (email: string, password: string, username: string):
       .insert({
         id: authData.user.id,
         username: username,
+        password: password, // Adding the password field back
         is_admin: username.toLowerCase() === 'admin'
       });
       
@@ -136,6 +137,7 @@ export const createDefaultAdminUser = async (): Promise<boolean> => {
         .insert({
           id: authData.user.id,
           username: 'admin',
+          password: adminPassword, // Adding the password field back
           is_admin: true
         });
         
