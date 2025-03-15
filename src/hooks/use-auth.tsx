@@ -103,7 +103,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     } catch (error) {
       console.error("Authentication error:", error);
-      toast.error("Authentication failed. Please try again.");
+      
+      // Handle specific error codes
+      if (error.code === '23505') {
+        toast.error("Username already exists. Please contact your administrator.");
+      } else {
+        toast.error("Authentication failed. Please try again.");
+      }
+      
       return false;
     }
   };

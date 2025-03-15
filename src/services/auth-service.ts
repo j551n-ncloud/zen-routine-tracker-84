@@ -62,16 +62,38 @@ export const signIn = async (email: string, password: string): Promise<any> => {
     if (!userData && data.user) {
       const username = data.user.user_metadata?.username || email.split('@')[0];
       
-      const { error: insertError } = await supabase
-        .from('users')
-        .insert({
-          id: data.user.id,
-          username: username,
-          password: password,
-          is_admin: username.toLowerCase() === 'admin'
-        });
-        
-      if (insertError) throw insertError;
+      try {
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: data.user.id,
+            username: username,
+            password: password,
+            is_admin: username.toLowerCase() === 'admin'
+          });
+          
+        if (insertError) {
+          // If there's a duplicate username, try with a unique one
+          if (insertError.code === '23505') {
+            const uniqueUsername = `${username}_${Math.floor(Math.random() * 1000)}`;
+            const { error: retryError } = await supabase
+              .from('users')
+              .insert({
+                id: data.user.id,
+                username: uniqueUsername,
+                password: password,
+                is_admin: uniqueUsername.toLowerCase() === 'admin'
+              });
+            
+            if (retryError) throw retryError;
+          } else {
+            throw insertError;
+          }
+        }
+      } catch (insertError) {
+        console.error('Error adding user to users table:', insertError);
+        // Continue with login even if insert fails - the auth is still valid
+      }
     }
     
     return data;
@@ -157,16 +179,25 @@ export const createDefaultAdminUser = async (): Promise<boolean> => {
     
     if (authData.user) {
       // Then insert into users table
-      const { error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          username: 'admin',
-          password: adminPassword, // Adding the password field back
-          is_admin: true
-        });
-        
-      if (userError) throw userError;
+      try {
+        const { error: userError } = await supabase
+          .from('users')
+          .insert({
+            id: authData.user.id,
+            username: 'admin',
+            password: adminPassword, // Adding the password field back
+            is_admin: true
+          });
+          
+        if (userError) throw userError;
+      } catch (error) {
+        // If the admin user already exists in the users table, that's fine
+        if (error.code === '23505') {
+          console.log('Admin user already exists in users table');
+        } else {
+          throw error;
+        }
+      }
       
       console.log('Default admin user created successfully:', adminEmail);
       return true;
