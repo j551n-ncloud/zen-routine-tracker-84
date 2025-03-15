@@ -79,45 +79,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
   
-  // Login function - now handles both sign up and login
+  // Login function - only handles sign in, no more signup
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       const email = `${username}@example.com`; // For demo purposes
       
-      // First, try to sign in
-      try {
-        const authData = await authService.signIn(email, password);
+      // Try to sign in
+      const authData = await authService.signIn(email, password);
+      
+      if (authData.user) {
+        const userData = await authService.getUserData(authData.user.id);
         
-        if (authData.user) {
-          const userData = await authService.getUserData(authData.user.id);
-          
-          if (userData) {
-            setUser({
-              username: userData.username,
-              isAdmin: !!userData.is_admin
-            });
-            toast.success(`Welcome back, ${userData.username}!`);
-            return true;
-          }
-        }
-      } catch (error) {
-        // If login fails, try to sign up
-        console.log("Login failed, attempting signup");
-        const signUpSuccess = await authService.signUp(email, password, username);
-        
-        if (signUpSuccess) {
-          // After signup, sign in
-          const authData = await authService.signIn(email, password);
-          
-          if (authData.user) {
-            // New user is created, set user state
-            setUser({
-              username: username,
-              isAdmin: username.toLowerCase() === 'admin'
-            });
-            toast.success(`Welcome, ${username}!`);
-            return true;
-          }
+        if (userData) {
+          setUser({
+            username: userData.username,
+            isAdmin: !!userData.is_admin
+          });
+          toast.success(`Welcome back, ${userData.username}!`);
+          return true;
         }
       }
       

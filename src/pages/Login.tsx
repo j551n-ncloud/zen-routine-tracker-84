@@ -74,7 +74,7 @@ const Login: React.FC = () => {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Sign up by entering a new username and password
+              Contact your administrator if you need access
             </p>
           </CardContent>
           <CardFooter>

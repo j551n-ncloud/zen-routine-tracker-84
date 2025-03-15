@@ -39,7 +39,7 @@ export const signUp = async (email: string, password: string, username: string):
   }
 };
 
-// Login user
+// Login user - modified to only allow sign in (no sign up)
 export const signIn = async (email: string, password: string): Promise<any> => {
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -48,6 +48,31 @@ export const signIn = async (email: string, password: string): Promise<any> => {
     });
     
     if (error) throw error;
+
+    // Check if user exists in users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', data.user.id)
+      .maybeSingle();
+    
+    if (userError) throw userError;
+
+    // If user doesn't exist in users table but exists in auth, add them
+    if (!userData && data.user) {
+      const username = data.user.user_metadata?.username || email.split('@')[0];
+      
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({
+          id: data.user.id,
+          username: username,
+          password: password,
+          is_admin: username.toLowerCase() === 'admin'
+        });
+        
+      if (insertError) throw insertError;
+    }
     
     return data;
   } catch (error) {
