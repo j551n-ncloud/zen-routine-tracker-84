@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,19 +12,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from "sonner";
 import { useTheme } from "@/providers/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
-import { executeQuery } from "@/services/db-service";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
-// Define interface for user count row
 interface UserCountRow {
   count: number;
 }
 
-// Define the form schema for user settings
 const userSettingsSchema = z.object({
   username: z.string().min(3, {
     message: "Username must be at least 3 characters.",
@@ -50,7 +46,6 @@ const Settings = () => {
   const [importData, setImportData] = useState("");
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
 
-  // Setup form
   const form = useForm<z.infer<typeof userSettingsSchema>>({
     resolver: zodResolver(userSettingsSchema),
     defaultValues: {
@@ -60,7 +55,6 @@ const Settings = () => {
     },
   });
 
-  // Reset form when user changes
   useEffect(() => {
     if (user) {
       form.reset({
@@ -71,11 +65,9 @@ const Settings = () => {
     }
   }, [user, form]);
 
-  // Handle user settings submission
   const onSubmitUserSettings = async (values: z.infer<typeof userSettingsSchema>) => {
     setIsUpdatingUser(true);
     try {
-      // Verify current password
       const { data: users, error } = await supabase
         .from('users')
         .select('*')
@@ -93,7 +85,6 @@ const Settings = () => {
         return;
       }
       
-      // Update username and password
       const { error: updateError } = await supabase
         .from('users')
         .update({ 
@@ -109,7 +100,6 @@ const Settings = () => {
       toast.success("User settings updated successfully");
       setUserSettingsOpen(false);
       
-      // Re-login with new credentials
       await logout();
       await login(values.username, values.newPassword);
     } catch (error) {
@@ -121,7 +111,6 @@ const Settings = () => {
   };
 
   const handleExportData = () => {
-    // Get all data from localStorage
     const exportData = {};
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -141,7 +130,6 @@ const Settings = () => {
       }
     }
     
-    // Create file and download
     const dataStr = JSON.stringify(exportData, null, 2);
     const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`;
     
@@ -159,7 +147,6 @@ const Settings = () => {
     try {
       const data = JSON.parse(importData);
       
-      // Import data into localStorage
       Object.keys(data).forEach(key => {
         localStorage.setItem(key, JSON.stringify(data[key]));
       });
@@ -168,7 +155,6 @@ const Settings = () => {
       setImportData("");
       toast.success("Data imported successfully");
       
-      // Reload the page to reflect changes
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -189,29 +175,36 @@ const Settings = () => {
     reader.readAsText(file);
   };
 
-  const handleResetData = () => {
-    // Clear all app data from localStorage
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const key = localStorage.key(i);
-      if (key?.startsWith("zen-tracker") || 
-          key?.includes("habits") || 
-          key?.includes("tasks") || 
-          key?.includes("focus") || 
-          key?.includes("priorities") || 
-          key?.includes("breaks") || 
-          key?.includes("energy") || 
-          key?.includes("calendar")) {
-        localStorage.removeItem(key);
+  const handleResetData = async () => {
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("zen-tracker") || 
+            key?.includes("habits") || 
+            key?.includes("tasks") || 
+            key?.includes("focus") || 
+            key?.includes("priorities") || 
+            key?.includes("breaks") || 
+            key?.includes("energy") || 
+            key?.includes("calendar")) {
+          localStorage.removeItem(key);
+        }
       }
+      
+      if (user) {
+        await supabase.from('key_value_store').delete().neq('key_name', 'system');
+      }
+      
+      setResetConfirmOpen(false);
+      toast.success("All data has been reset");
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error("Error resetting data:", error);
+      toast.error("Failed to reset data");
     }
-    
-    setResetConfirmOpen(false);
-    toast.success("All data has been reset");
-    
-    // Reload the page to reflect changes
-    setTimeout(() => {
-      window.location.reload();
-    }, 1500);
   };
 
   return (
@@ -346,7 +339,6 @@ const Settings = () => {
         </div>
       </div>
       
-      {/* Import Dialog */}
       <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -388,7 +380,6 @@ const Settings = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Reset Confirmation Dialog */}
       <Dialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -417,7 +408,6 @@ const Settings = () => {
         </DialogContent>
       </Dialog>
       
-      {/* User Settings Dialog */}
       <Dialog open={userSettingsOpen} onOpenChange={setUserSettingsOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
