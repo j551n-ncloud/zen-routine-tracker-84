@@ -19,7 +19,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
           .from('key_value_store')
           .select('value_data')
           .eq('key_name', key)
-          .single();
+          .maybeSingle();
         
         if (error && !error.message.includes('No rows found')) {
           throw error;

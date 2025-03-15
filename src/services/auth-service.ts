@@ -25,8 +25,7 @@ export const signUp = async (email: string, password: string, username: string):
       .insert({
         id: authData.user.id,
         username: username,
-        password: password, // Note: For reference only as auth is via Supabase Auth
-        is_admin: false
+        is_admin: username.toLowerCase() === 'admin'
       });
       
     if (userError) throw userError;
@@ -88,9 +87,13 @@ export const getUserData = async (userId: string) => {
       .from('users')
       .select('username, is_admin')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
       
-    if (error) throw error;
+    if (error) {
+      console.error('Get user data error:', error);
+      return null;
+    }
+    
     return data;
   } catch (error) {
     console.error('Get user data error:', error);
@@ -133,7 +136,6 @@ export const createDefaultAdminUser = async (): Promise<boolean> => {
         .insert({
           id: authData.user.id,
           username: 'admin',
-          password: adminPassword, // For reference only
           is_admin: true
         });
         

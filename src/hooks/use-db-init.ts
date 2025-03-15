@@ -1,7 +1,6 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { createDefaultAdminUser } from '@/services/auth-service';
 
 export function useDbInit() {
