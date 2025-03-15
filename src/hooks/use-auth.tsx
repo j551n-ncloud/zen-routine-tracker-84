@@ -79,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
   
-  // Login function - only handles sign in, no more signup
+  // Login function
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       const email = `${username}@example.com`; // For demo purposes
@@ -107,6 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Handle specific error codes
       if (error.code === '23505') {
         toast.error("Username already exists. Please contact your administrator.");
+      } else if (error.code === 'unauthorized') {
+        toast.error("You are not authorized to access this system.");
       } else {
         toast.error("Authentication failed. Please try again.");
       }

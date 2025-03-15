@@ -22,7 +22,11 @@ const Login: React.FC = () => {
     try {
       await login(username, password);
     } catch (err) {
-      setError("An unexpected error occurred. Please try again.");
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      if (err.code === 'unauthorized') {
+        errorMessage = "You are not authorized to access this system.";
+      }
+      setError(errorMessage);
     } finally {
       setLoggingIn(false);
     }
@@ -51,6 +55,9 @@ const Login: React.FC = () => {
           <CardTitle className="text-2xl font-bold text-center">Zen Habit Tracker</CardTitle>
           <CardDescription className="text-center">
             Enter your credentials to access your dashboard
+          </CardDescription>
+          <CardDescription className="text-center text-amber-600 font-semibold">
+            Note: This system is restricted to authorized users only
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>

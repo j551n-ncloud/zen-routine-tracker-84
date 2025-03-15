@@ -1,45 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { authDataService } from './auth-data-service';
+import { userService } from './user-service';
 
-// Create a user (signup)
-export const signUp = async (email: string, password: string, username: string): Promise<boolean> => {
-  try {
-    // 1. Create auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: email,
-      password: password,
-      options: {
-        data: {
-          username: username
-        }
-      }
-    });
-    
-    if (authError) throw authError;
-    if (!authData.user) return false;
-    
-    // 2. Insert into users table
-    const { error: userError } = await supabase
-      .from('users')
-      .insert({
-        id: authData.user.id,
-        username: username,
-        password: password, // Adding the password field back
-        is_admin: username.toLowerCase() === 'admin'
-      });
-      
-    if (userError) throw userError;
-    
-    return true;
-  } catch (error) {
-    console.error('Signup error:', error);
-    toast.error('Failed to create account. Please try again.');
-    return false;
-  }
-};
-
-// Login user - modified to only allow sign in (no sign up)
+// Login user - modified to only allow specific user
 export const signIn = async (email: string, password: string): Promise<any> => {
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -49,57 +14,31 @@ export const signIn = async (email: string, password: string): Promise<any> => {
     
     if (error) throw error;
 
-    // Check if user exists in users table
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', data.user.id)
-      .maybeSingle();
+    // Check if user is the allowed user
+    const ALLOWED_USER_ID = '9dada97d-4d28-4d25-a7fb-83f463f4dba1';
     
-    if (userError) throw userError;
+    if (data.user.id !== ALLOWED_USER_ID) {
+      throw { code: 'unauthorized', message: 'This user is not authorized to access the system.' };
+    }
 
+    // Check if user exists in users table
+    const userData = await userService.getUserByAuthId(data.user.id);
+    
     // If user doesn't exist in users table but exists in auth, add them
     if (!userData && data.user) {
-      const username = data.user.user_metadata?.username || email.split('@')[0];
-      
-      try {
-        const { error: insertError } = await supabase
-          .from('users')
-          .insert({
-            id: data.user.id,
-            username: username,
-            password: password,
-            is_admin: username.toLowerCase() === 'admin'
-          });
-          
-        if (insertError) {
-          // If there's a duplicate username, try with a unique one
-          if (insertError.code === '23505') {
-            const uniqueUsername = `${username}_${Math.floor(Math.random() * 1000)}`;
-            const { error: retryError } = await supabase
-              .from('users')
-              .insert({
-                id: data.user.id,
-                username: uniqueUsername,
-                password: password,
-                is_admin: uniqueUsername.toLowerCase() === 'admin'
-              });
-            
-            if (retryError) throw retryError;
-          } else {
-            throw insertError;
-          }
-        }
-      } catch (insertError) {
-        console.error('Error adding user to users table:', insertError);
-        // Continue with login even if insert fails - the auth is still valid
-      }
+      await userService.ensureUserInDatabase(data.user, password);
     }
     
     return data;
   } catch (error) {
     console.error('Login error:', error);
-    toast.error('Invalid login credentials.');
+    
+    if (error.code === 'unauthorized') {
+      toast.error('You are not authorized to access this system.');
+    } else {
+      toast.error('Invalid login credentials.');
+    }
+    
     throw error;
   }
 };
@@ -128,84 +67,6 @@ export const getCurrentSession = async () => {
   }
 };
 
-// Get user data from the users table
-export const getUserData = async (userId: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('users')
-      .select('username, is_admin')
-      .eq('id', userId)
-      .maybeSingle();
-      
-    if (error) {
-      console.error('Get user data error:', error);
-      return null;
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('Get user data error:', error);
-    return null;
-  }
-};
-
-// Create default admin user if needed
-export const createDefaultAdminUser = async (): Promise<boolean> => {
-  try {
-    // Check if any users exist
-    const { data: existingUsers, error: checkError } = await supabase
-      .from('users')
-      .select('id')
-      .limit(1);
-      
-    if (checkError) throw checkError;
-    
-    // If users exist, no need to create an admin
-    if (existingUsers && existingUsers.length > 0) {
-      return false;
-    }
-    
-    // Create admin user
-    const adminEmail = 'admin@example.com';
-    const adminPassword = 'admin123';
-    
-    // First try to sign up
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: adminEmail,
-      password: adminPassword
-    });
-    
-    if (authError) throw authError;
-    
-    if (authData.user) {
-      // Then insert into users table
-      try {
-        const { error: userError } = await supabase
-          .from('users')
-          .insert({
-            id: authData.user.id,
-            username: 'admin',
-            password: adminPassword, // Adding the password field back
-            is_admin: true
-          });
-          
-        if (userError) throw userError;
-      } catch (error) {
-        // If the admin user already exists in the users table, that's fine
-        if (error.code === '23505') {
-          console.log('Admin user already exists in users table');
-        } else {
-          throw error;
-        }
-      }
-      
-      console.log('Default admin user created successfully:', adminEmail);
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.error('Error creating default admin user:', error);
-    return false;
-  }
-};
+// Export utility functions from other modules
+export const getUserData = userService.getUserData;
+export const createDefaultAdminUser = authDataService.createDefaultAdminUser;
