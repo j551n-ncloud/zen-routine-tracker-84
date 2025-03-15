@@ -1,15 +1,15 @@
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { initDatabase } from '../services/db-service';
+import { createDefaultAdminUser } from '@/services/auth-service';
 
 export function useDbInit() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 5;
+  const MAX_RETRIES = 3;
 
   useEffect(() => {
     let isMounted = true;
@@ -18,15 +18,22 @@ export function useDbInit() {
       try {
         setIsLoading(true);
         console.log('Initializing database connection...');
-        const success = await initDatabase();
+        
+        // Test the Supabase connection with a simple query
+        const { error } = await supabase.from('key_value_store').select('*').limit(1);
+        
+        if (error && !error.message.includes('does not exist')) {
+          throw error;
+        }
         
         if (isMounted) {
-          setIsInitialized(success);
-          if (success) {
-            console.log('Database initialized successfully');
-            toast.success("Connected to database successfully");
-          }
+          setIsInitialized(true);
           setError(null);
+          
+          // Create default admin if needed
+          await createDefaultAdminUser();
+          
+          console.log('Database initialized successfully');
         }
       } catch (err) {
         console.error('Failed to initialize database:', err);

@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Info } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 
 const Login: React.FC = () => {
   const { login, isAuthenticated, isLoading } = useAuth();
@@ -52,13 +51,6 @@ const Login: React.FC = () => {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-              <Info className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-              <AlertDescription className="text-sm text-blue-700 dark:text-blue-300">
-                Default admin credentials: <span className="font-semibold">admin / admin123</span>
-              </AlertDescription>
-            </Alert>
-            
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
               <Input
@@ -82,7 +74,7 @@ const Login: React.FC = () => {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              For demo: use admin/admin123 or any matching username/password
+              Sign up by entering a new username and password
             </p>
           </CardContent>
           <CardFooter>
