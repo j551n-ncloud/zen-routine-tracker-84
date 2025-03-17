@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
 // Calculate the API base URL - prefer environment variables, fallback to current origin, then try localhost ports
@@ -34,25 +33,28 @@ const getApiBaseUrl = () => {
 // API base URL
 const API_BASE_URL = getApiBaseUrl();
 
-export function useDataStorage<T>(key: string, initialValue: T) {
+export function useDataStorage<T>(key: string, initialValue: T, userId?: string) {
   // State to store our value
   const [storedValue, setStoredValue] = useState<T>(initialValue);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const { user } = useAuth();
-
+  
   // Load data from server on initial mount
   useEffect(() => {
-    if (!user) return; // Don't fetch data if not authenticated
+    if (!userId) return; // Don't fetch data if no user ID
     
     const fetchData = async () => {
       try {
         setIsLoading(true);
         
         // Try to get from localStorage first (faster)
-        const localData = localStorage.getItem(`${user.userId}_${key}`);
+        const localData = localStorage.getItem(`${userId}_${key}`);
         if (localData) {
-          setStoredValue(JSON.parse(localData));
+          try {
+            setStoredValue(JSON.parse(localData));
+          } catch (e) {
+            console.error('Error parsing local data:', e);
+          }
         }
         
         // Then fetch from server (might be more up-to-date)
@@ -81,9 +83,11 @@ export function useDataStorage<T>(key: string, initialValue: T) {
         const data = await response.json();
         
         if (data) {
-          setStoredValue(data);
+          // Ensure data has the expected format
+          const safeData = data.value || data;
+          setStoredValue(safeData);
           // Update localStorage with server data
-          localStorage.setItem(`${user.userId}_${key}`, JSON.stringify(data));
+          localStorage.setItem(`${userId}_${key}`, JSON.stringify(safeData));
         } else if (!localData) {
           // If no data on server and no local data, use initial value
           setStoredValue(initialValue);
@@ -93,9 +97,13 @@ export function useDataStorage<T>(key: string, initialValue: T) {
         setError(err instanceof Error ? err : new Error(String(err)));
         
         // Fall back to localStorage if server fetch fails
-        const localData = localStorage.getItem(`${user.userId}_${key}`);
+        const localData = localStorage.getItem(`${userId}_${key}`);
         if (localData) {
-          setStoredValue(JSON.parse(localData));
+          try {
+            setStoredValue(JSON.parse(localData));
+          } catch (e) {
+            console.error('Error parsing local data:', e);
+          }
         }
       } finally {
         setIsLoading(false);
@@ -103,11 +111,11 @@ export function useDataStorage<T>(key: string, initialValue: T) {
     };
 
     fetchData();
-  }, [key, initialValue, user]);
+  }, [key, initialValue, userId]);
 
   // Function to save data both to localStorage and server
   const setValue = async (value: T | ((val: T) => T)) => {
-    if (!user) return; // Don't save data if not authenticated
+    if (!userId) return; // Don't save data if no user ID
     
     try {
       // Allow value to be a function so we have same API as useState
@@ -118,7 +126,7 @@ export function useDataStorage<T>(key: string, initialValue: T) {
       setStoredValue(valueToStore);
       
       // Save to localStorage for immediate access
-      localStorage.setItem(`${user.userId}_${key}`, JSON.stringify(valueToStore));
+      localStorage.setItem(`${userId}_${key}`, JSON.stringify(valueToStore));
       
       // Save to server in background
       const authToken = localStorage.getItem('authToken');
@@ -149,7 +157,7 @@ export function useDataStorage<T>(key: string, initialValue: T) {
 
   // For data polling - periodically check for updates from the server
   useEffect(() => {
-    if (!user) return; // Don't poll if not authenticated
+    if (!userId) return; // Don't poll if no user ID
     
     const pollInterval = 30000; // Poll every 30 seconds
     
@@ -173,14 +181,20 @@ export function useDataStorage<T>(key: string, initialValue: T) {
         const data = await response.json();
         
         if (data) {
-          // Compare with current data to avoid unnecessary updates
-          const currentData = JSON.stringify(storedValue);
-          const newData = JSON.stringify(data);
+          // Ensure data has the expected format and is valid
+          const safeData = data.value || data;
           
-          if (currentData !== newData) {
-            console.log(`Data updated from server for ${key}`);
-            setStoredValue(data);
-            localStorage.setItem(`${user.userId}_${key}`, newData);
+          // Ensure we have a valid data structure before comparing
+          if (safeData) {
+            // Compare with current data to avoid unnecessary updates
+            const currentData = JSON.stringify(storedValue);
+            const newData = JSON.stringify(safeData);
+            
+            if (currentData !== newData) {
+              console.log(`Data updated from server for ${key}`);
+              setStoredValue(safeData);
+              localStorage.setItem(`${userId}_${key}`, newData);
+            }
           }
         }
       } catch (error) {
@@ -191,7 +205,7 @@ export function useDataStorage<T>(key: string, initialValue: T) {
     const intervalId = setInterval(pollForUpdates, pollInterval);
     
     return () => clearInterval(intervalId);
-  }, [key, user, storedValue]);
+  }, [key, userId, storedValue]);
 
   return { 
     data: storedValue, 

@@ -1,5 +1,6 @@
 import { useDataStorage } from "./use-data-storage";
 import { format } from "date-fns";
+import { useAuth } from "./use-auth";
 
 export interface Habit {
   id: number;
@@ -57,17 +58,23 @@ const initialHabits: Habit[] = [
 ];
 
 export function useHabitsStorage() {
-  // Use useDataStorage instead of useLocalStorage for server syncing
-  const { data: habits, setData: setHabits } = useDataStorage<Habit[]>("zen-tracker-habits", initialHabits);
+  const { user } = useAuth();
+  const userId = user?.userId;
+  
+  // Use useDataStorage with the user ID passed as a parameter
+  const { data: habits, setData: setHabits } = useDataStorage<Habit[]>("zen-tracker-habits", initialHabits, userId);
   const { data: dailyHabitStatus, setData: setDailyHabitStatus } = useDataStorage<DailyHabitStatus>(
     "zen-tracker-daily-habits", 
-    {}
+    {},
+    userId
   );
   // For calendar habits
-  const { data: calendarHabits, setData: setCalendarHabits } = useDataStorage<Record<string, any[]>>("calendar-habits", {});
+  const { data: calendarHabits, setData: setCalendarHabits } = useDataStorage<Record<string, any[]>>("calendar-habits", {}, userId);
 
   const addHabit = (habit: Omit<Habit, "id" | "streak" | "completed">) => {
-    const newId = Math.max(...habits.map(h => h.id), 0) + 1;
+    if (!habits) return 0; // Safety check
+    
+    const newId = Math.max(...habits.map(h => h.id || 0), 0) + 1;
     
     const newHabit: Habit = {
       id: newId,
@@ -88,20 +95,29 @@ export function useHabitsStorage() {
   };
 
   const syncNewHabitToCalendar = (newHabit: Habit) => {
+    if (!calendarHabits) return; // Safety check
+    
     // Add the new habit to all existing calendar days
     const updatedCalendarHabits = { ...calendarHabits };
     
     Object.keys(updatedCalendarHabits).forEach(date => {
-      updatedCalendarHabits[date] = [
-        ...updatedCalendarHabits[date],
-        { id: newHabit.id, name: newHabit.name, completed: false }
-      ];
+      if (Array.isArray(updatedCalendarHabits[date])) {
+        updatedCalendarHabits[date] = [
+          ...updatedCalendarHabits[date],
+          { id: newHabit.id, name: newHabit.name, completed: false }
+        ];
+      } else {
+        // Initialize if not an array
+        updatedCalendarHabits[date] = [{ id: newHabit.id, name: newHabit.name, completed: false }];
+      }
     });
     
     setCalendarHabits(updatedCalendarHabits);
   };
 
   const toggleHabit = (id: number) => {
+    if (!habits || !Array.isArray(habits)) return; // Safety check
+    
     // Update the main habits state
     const habit = habits.find(h => h.id === id);
     if (!habit) return;
@@ -139,9 +155,11 @@ export function useHabitsStorage() {
   };
 
   const syncHabitToggleToCalendar = (id: number, completed: boolean, dateKey: string) => {
+    if (!calendarHabits) return; // Safety check
+    
     const updatedCalendarHabits = { ...calendarHabits };
     
-    if (updatedCalendarHabits[dateKey]) {
+    if (updatedCalendarHabits[dateKey] && Array.isArray(updatedCalendarHabits[dateKey])) {
       const habitIndex = updatedCalendarHabits[dateKey].findIndex(h => h.id === id);
       
       if (habitIndex !== -1) {
@@ -149,7 +167,7 @@ export function useHabitsStorage() {
         updatedCalendarHabits[dateKey][habitIndex].completed = completed;
       } else {
         // Add habit if it doesn't exist
-        const habit = habits.find(h => h.id === id);
+        const habit = habits && Array.isArray(habits) ? habits.find(h => h.id === id) : null;
         if (habit) {
           updatedCalendarHabits[dateKey].push({
             id: habit.id,
@@ -164,32 +182,42 @@ export function useHabitsStorage() {
   };
 
   const removeHabit = (id: number) => {
+    if (!habits || !Array.isArray(habits)) return; // Safety check
+    
     setHabits(habits.filter(habit => habit.id !== id));
     
     // Remove habit from daily status
-    const newDailyHabitStatus = { ...dailyHabitStatus };
-    Object.keys(newDailyHabitStatus).forEach(date => {
-      if (newDailyHabitStatus[date][id]) {
-        delete newDailyHabitStatus[date][id];
-      }
-    });
-    setDailyHabitStatus(newDailyHabitStatus);
+    if (dailyHabitStatus) {
+      const newDailyHabitStatus = { ...dailyHabitStatus };
+      Object.keys(newDailyHabitStatus).forEach(date => {
+        if (newDailyHabitStatus[date][id]) {
+          delete newDailyHabitStatus[date][id];
+        }
+      });
+      setDailyHabitStatus(newDailyHabitStatus);
+    }
     
     // Remove from calendar-habits
     syncHabitRemovalToCalendar(id);
   };
 
   const syncHabitRemovalToCalendar = (id: number) => {
+    if (!calendarHabits) return; // Safety check
+    
     const updatedCalendarHabits = { ...calendarHabits };
     
     Object.keys(updatedCalendarHabits).forEach(date => {
-      updatedCalendarHabits[date] = updatedCalendarHabits[date].filter(h => h.id !== id);
+      if (Array.isArray(updatedCalendarHabits[date])) {
+        updatedCalendarHabits[date] = updatedCalendarHabits[date].filter(h => h.id !== id);
+      }
     });
     
     setCalendarHabits(updatedCalendarHabits);
   };
 
   const updateHabit = (id: number, updates: Partial<Omit<Habit, "id">>) => {
+    if (!habits || !Array.isArray(habits)) return; // Safety check
+    
     const updatedHabits = habits.map(habit => 
       habit.id === id 
         ? { ...habit, ...updates } 
@@ -205,21 +233,25 @@ export function useHabitsStorage() {
   };
 
   const syncHabitUpdateToCalendar = (id: number, updates: Partial<Omit<Habit, "id">>) => {
+    if (!calendarHabits) return; // Safety check
+    
     const updatedCalendarHabits = { ...calendarHabits };
     
     Object.keys(updatedCalendarHabits).forEach(date => {
-      updatedCalendarHabits[date] = updatedCalendarHabits[date].map(h => 
-        h.id === id 
-          ? { ...h, name: updates.name || h.name } 
-          : h
-      );
+      if (Array.isArray(updatedCalendarHabits[date])) {
+        updatedCalendarHabits[date] = updatedCalendarHabits[date].map(h => 
+          h.id === id 
+            ? { ...h, name: updates.name || h.name } 
+            : h
+        );
+      }
     });
     
     setCalendarHabits(updatedCalendarHabits);
   };
 
   return {
-    habits,
+    habits: Array.isArray(habits) ? habits : [],
     addHabit,
     toggleHabit,
     removeHabit,
