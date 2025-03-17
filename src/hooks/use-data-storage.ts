@@ -1,6 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
 
 // Calculate the API base URL - prefer environment variables, fallback to current origin, then try localhost ports
 const getApiBaseUrl = () => {
@@ -143,8 +143,55 @@ export function useDataStorage<T>(key: string, initialValue: T) {
     } catch (err) {
       console.error('Error saving data:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
+      toast.error("Failed to save data to server. Changes may not sync across browsers.");
     }
   };
+
+  // For data polling - periodically check for updates from the server
+  useEffect(() => {
+    if (!user) return; // Don't poll if not authenticated
+    
+    const pollInterval = 30000; // Poll every 30 seconds
+    
+    const pollForUpdates = async () => {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) return;
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/data/${key}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!response.ok) return;
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return;
+        
+        const data = await response.json();
+        
+        if (data) {
+          // Compare with current data to avoid unnecessary updates
+          const currentData = JSON.stringify(storedValue);
+          const newData = JSON.stringify(data);
+          
+          if (currentData !== newData) {
+            console.log(`Data updated from server for ${key}`);
+            setStoredValue(data);
+            localStorage.setItem(`${user.userId}_${key}`, newData);
+          }
+        }
+      } catch (error) {
+        console.error('Error polling data:', error);
+      }
+    };
+    
+    const intervalId = setInterval(pollForUpdates, pollInterval);
+    
+    return () => clearInterval(intervalId);
+  }, [key, user, storedValue]);
 
   return { 
     data: storedValue, 
