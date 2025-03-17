@@ -1,19 +1,8 @@
 
 import { useState, useEffect } from "react";
-import fs from 'fs';
-import path from 'path';
 
 // Define data directory path - this will be relative to where the server is running
-const DATA_DIR = path.join(process.cwd(), 'data');
-
-// Ensure data directory exists
-try {
-  if (typeof window === 'undefined' && !fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-} catch (error) {
-  console.error("Failed to create data directory:", error);
-}
+const DATA_DIR = typeof window === 'undefined' ? process.cwd() + '/data' : '';
 
 export function useServerStorage<T>(key: string, initialValue: T) {
   // State to store our value
@@ -28,18 +17,8 @@ export function useServerStorage<T>(key: string, initialValue: T) {
         return initialValue;
       }
     } else {
-      // We're on the server
-      try {
-        const filePath = path.join(DATA_DIR, `${key}.json`);
-        if (fs.existsSync(filePath)) {
-          const data = fs.readFileSync(filePath, 'utf8');
-          return JSON.parse(data);
-        }
-        return initialValue;
-      } catch (error) {
-        console.error(`Error reading from server for key ${key}:`, error);
-        return initialValue;
-      }
+      // We're on the server - this would be handled by server-side code
+      return initialValue;
     }
   });
 
@@ -56,12 +35,6 @@ export function useServerStorage<T>(key: string, initialValue: T) {
       // Save to localStorage if we're in the browser
       if (typeof window !== "undefined") {
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
-      }
-      
-      // Save to file system if we're on the server
-      if (typeof window === "undefined") {
-        const filePath = path.join(DATA_DIR, `${key}.json`);
-        fs.writeFileSync(filePath, JSON.stringify(valueToStore, null, 2));
       }
     } catch (error) {
       console.error("Error saving data:", error);
