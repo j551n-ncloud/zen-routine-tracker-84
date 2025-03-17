@@ -114,5 +114,5 @@ export function useDataStorage<T>(key: string, initialValue: T) {
     // For backward compatibility with useLocalStorage
     0: storedValue, 
     1: setValue 
-  } as const & { 0: T, 1: typeof setValue };
+  } as const;
 }
