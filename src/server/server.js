@@ -16,14 +16,46 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Middleware
+// Determine allowed origins for CORS
+const getAllowedOrigins = () => {
+  if (process.env.NODE_ENV === 'production') {
+    // In production, allow the specified CLIENT_URL or default to the same origin
+    return process.env.CLIENT_URL ? [process.env.CLIENT_URL] : '*';
+  } else {
+    // In development, allow any localhost port
+    return ['http://localhost:8080', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://127.0.0.1:8080'];
+  }
+};
+
+// Setup CORS with more permissive options
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.CLIENT_URL || 'http://localhost:8080'] 
-    : 'http://localhost:8080',
-  credentials: true
+  origin: (origin, callback) => {
+    const allowedOrigins = getAllowedOrigins();
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins === '*' || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.error(`Origin ${origin} not allowed by CORS policy`);
+      callback(new Error('CORS not allowed'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(bodyParser.json({ limit: '10mb' }));
+
+// Add OPTIONS handling for preflight requests
+app.options('*', cors());
+
+// Helper to log API requests
+const logRequest = (req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+};
+
+app.use(logRequest);
 
 // GET endpoint to retrieve data by key
 app.get('/api/data/:key', (req, res) => {
@@ -157,6 +189,11 @@ app.get('/api/auth/user', (req, res) => {
       error: 'An error occurred during authentication check' 
     });
   }
+});
+
+// Add a health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', server: 'zen-routine-tracker-api' });
 });
 
 // Start the server

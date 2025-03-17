@@ -2,10 +2,37 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 
-// Base URL for API - adjust based on your deployment
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? window.location.origin 
-  : 'http://localhost:3001';
+// Calculate the API base URL - prefer environment variables, fallback to current origin, then try localhost ports
+const getApiBaseUrl = () => {
+  // If we have an environment variable, use that
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  
+  // In production, try to use the same origin
+  if (process.env.NODE_ENV === 'production') {
+    // If we're not in a browser, return a default localhost URL
+    if (typeof window === 'undefined') {
+      return 'http://localhost:3001';
+    }
+    
+    // Check if we're on a different port than API (common in some deployments)
+    const currentPort = window.location.port;
+    if (currentPort === '8080' || currentPort === '5173') {
+      // Likely a dev server, API probably on 3001
+      return `${window.location.protocol}//${window.location.hostname}:3001`;
+    }
+    
+    // Same origin
+    return window.location.origin;
+  }
+  
+  // In development, try localhost:3001
+  return 'http://localhost:3001';
+};
+
+// API base URL
+const API_BASE_URL = getApiBaseUrl();
 
 export function useDataStorage<T>(key: string, initialValue: T) {
   // State to store our value
@@ -32,9 +59,11 @@ export function useDataStorage<T>(key: string, initialValue: T) {
         const authToken = localStorage.getItem('authToken');
         if (!authToken) return;
         
+        console.log(`Fetching data from ${API_BASE_URL}/api/data/${key}`);
         const response = await fetch(`${API_BASE_URL}/api/data/${key}`, {
           headers: {
-            'Authorization': `Bearer ${authToken}`
+            'Authorization': `Bearer ${authToken}`,
+            'Accept': 'application/json'
           }
         });
         
@@ -95,11 +124,13 @@ export function useDataStorage<T>(key: string, initialValue: T) {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) return;
       
+      console.log(`Saving data to ${API_BASE_URL}/api/data/${key}`);
       const response = await fetch(`${API_BASE_URL}/api/data/${key}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
+          'Authorization': `Bearer ${authToken}`,
+          'Accept': 'application/json'
         },
         body: JSON.stringify({ value: valueToStore }),
       });
