@@ -1,5 +1,4 @@
-
-import { useLocalStorage } from "./use-local-storage";
+import { useDataStorage } from "./use-data-storage";
 import { format } from "date-fns";
 
 export interface Habit {
@@ -8,7 +7,7 @@ export interface Habit {
   streak: number;
   completed: boolean;
   category: string;
-  icon?: string; // Changed from any to string to prevent type issues
+  icon?: string;
 }
 
 // Interface for storing daily habit status
@@ -58,13 +57,14 @@ const initialHabits: Habit[] = [
 ];
 
 export function useHabitsStorage() {
-  const [habits, setHabits] = useLocalStorage<Habit[]>("zen-tracker-habits", initialHabits);
-  const [dailyHabitStatus, setDailyHabitStatus] = useLocalStorage<DailyHabitStatus>(
+  // Use useDataStorage instead of useLocalStorage for server syncing
+  const { data: habits, setData: setHabits } = useDataStorage<Habit[]>("zen-tracker-habits", initialHabits);
+  const { data: dailyHabitStatus, setData: setDailyHabitStatus } = useDataStorage<DailyHabitStatus>(
     "zen-tracker-daily-habits", 
     {}
   );
-  // Add calendar habits storage
-  const [calendarHabits, setCalendarHabits] = useLocalStorage<Record<string, any[]>>("calendar-habits", {});
+  // For calendar habits
+  const { data: calendarHabits, setData: setCalendarHabits } = useDataStorage<Record<string, any[]>>("calendar-habits", {});
 
   const addHabit = (habit: Omit<Habit, "id" | "streak" | "completed">) => {
     const newId = Math.max(...habits.map(h => h.id), 0) + 1;
