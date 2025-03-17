@@ -1,8 +1,8 @@
-
 import React, { useState } from "react";
 import { Sidebar } from "./Sidebar";
-import { Menu } from "lucide-react";
+import { Menu, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -10,6 +10,19 @@ interface AppLayoutProps {
 
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { syncData } = useAuth();
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSync = async () => {
+    if (isSyncing) return;
+    
+    setIsSyncing(true);
+    try {
+      await syncData();
+    } finally {
+      setTimeout(() => setIsSyncing(false), 1000); // Add slight delay to show animation
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -35,14 +48,26 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {/* Main content */}
       <div className="flex-1 flex flex-col">
         {/* Mobile header with menu button */}
-        <header className="sticky top-0 z-10 h-16 flex items-center px-4 bg-background/80 backdrop-blur-sm border-b lg:hidden">
+        <header className="sticky top-0 z-10 h-16 flex items-center justify-between px-4 bg-background/80 backdrop-blur-sm border-b lg:hidden">
+          <div className="flex items-center">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <h1 className="text-xl font-semibold ml-4">Zen Habit Tracker</h1>
+          </div>
+          
+          {/* Add Sync Button to mobile header */}
           <button
-            onClick={() => setSidebarOpen(true)}
-            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
+            aria-label="Sync Data"
           >
-            <Menu className="h-5 w-5" />
+            <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin text-primary' : ''}`} />
           </button>
-          <h1 className="text-xl font-semibold ml-4">Zen Habit Tracker</h1>
         </header>
 
         {/* Main content area */}
