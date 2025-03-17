@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 // Base URL for API - adjust based on your deployment
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
@@ -11,21 +12,31 @@ export function useDataStorage<T>(key: string, initialValue: T) {
   const [storedValue, setStoredValue] = useState<T>(initialValue);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const { user } = useAuth();
 
   // Load data from server on initial mount
   useEffect(() => {
+    if (!user) return; // Don't fetch data if not authenticated
+    
     const fetchData = async () => {
       try {
         setIsLoading(true);
         
         // Try to get from localStorage first (faster)
-        const localData = localStorage.getItem(key);
+        const localData = localStorage.getItem(`${user.userId}_${key}`);
         if (localData) {
           setStoredValue(JSON.parse(localData));
         }
         
         // Then fetch from server (might be more up-to-date)
-        const response = await fetch(`${API_BASE_URL}/api/data/${key}`);
+        const authToken = localStorage.getItem('authToken');
+        if (!authToken) return;
+        
+        const response = await fetch(`${API_BASE_URL}/api/data/${key}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
         
         if (!response.ok) {
           throw new Error(`Server responded with ${response.status}`);
@@ -36,7 +47,7 @@ export function useDataStorage<T>(key: string, initialValue: T) {
         if (data) {
           setStoredValue(data);
           // Update localStorage with server data
-          localStorage.setItem(key, JSON.stringify(data));
+          localStorage.setItem(`${user.userId}_${key}`, JSON.stringify(data));
         } else if (!localData) {
           // If no data on server and no local data, use initial value
           setStoredValue(initialValue);
@@ -46,7 +57,7 @@ export function useDataStorage<T>(key: string, initialValue: T) {
         setError(err instanceof Error ? err : new Error(String(err)));
         
         // Fall back to localStorage if server fetch fails
-        const localData = localStorage.getItem(key);
+        const localData = localStorage.getItem(`${user.userId}_${key}`);
         if (localData) {
           setStoredValue(JSON.parse(localData));
         }
@@ -56,10 +67,12 @@ export function useDataStorage<T>(key: string, initialValue: T) {
     };
 
     fetchData();
-  }, [key, initialValue]);
+  }, [key, initialValue, user]);
 
   // Function to save data both to localStorage and server
   const setValue = async (value: T | ((val: T) => T)) => {
+    if (!user) return; // Don't save data if not authenticated
+    
     try {
       // Allow value to be a function so we have same API as useState
       const valueToStore =
@@ -69,13 +82,17 @@ export function useDataStorage<T>(key: string, initialValue: T) {
       setStoredValue(valueToStore);
       
       // Save to localStorage for immediate access
-      localStorage.setItem(key, JSON.stringify(valueToStore));
+      localStorage.setItem(`${user.userId}_${key}`, JSON.stringify(valueToStore));
       
       // Save to server in background
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) return;
+      
       const response = await fetch(`${API_BASE_URL}/api/data/${key}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
         },
         body: JSON.stringify({ value: valueToStore }),
       });
