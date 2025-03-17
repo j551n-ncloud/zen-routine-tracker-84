@@ -1,228 +1,205 @@
-import { useDataStorage } from "./use-data-storage";
-import { format } from "date-fns";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
 
-export interface Habit {
-  id: number;
-  name: string;
-  streak: number;
-  completed: boolean;
-  category: string;
-  icon?: string;
-}
-
-// Interface for storing daily habit status
-interface DailyHabitStatus {
-  [date: string]: {
-    [habitId: number]: boolean;
-  };
-}
-
-// Initial habit data for new users
-const initialHabits: Habit[] = [
-  { 
-    id: 1, 
-    name: "Drink Water", 
-    streak: 12, 
-    completed: false, 
-    category: "health"
-  },
-  { 
-    id: 2, 
-    name: "Exercise", 
-    streak: 5, 
-    completed: false, 
-    category: "fitness"
-  },
-  { 
-    id: 3, 
-    name: "Read Book", 
-    streak: 8, 
-    completed: false, 
-    category: "learning"
-  },
-  { 
-    id: 4, 
-    name: "8h Sleep", 
-    streak: 3, 
-    completed: false, 
-    category: "sleep"
-  },
-  { 
-    id: 5, 
-    name: "Meditation", 
-    streak: 15, 
-    completed: false, 
-    category: "mindfulness"
-  },
-];
-
-export function useHabitsStorage() {
-  // Use useDataStorage instead of useLocalStorage for server syncing
-  const { data: habits, setData: setHabits } = useDataStorage<Habit[]>("zen-tracker-habits", initialHabits);
-  const { data: dailyHabitStatus, setData: setDailyHabitStatus } = useDataStorage<DailyHabitStatus>(
-    "zen-tracker-daily-habits", 
-    {}
-  );
-  // For calendar habits
-  const { data: calendarHabits, setData: setCalendarHabits } = useDataStorage<Record<string, any[]>>("calendar-habits", {});
-
-  const addHabit = (habit: Omit<Habit, "id" | "streak" | "completed">) => {
-    const newId = Math.max(...habits.map(h => h.id), 0) + 1;
+// Calculate the API base URL - prefer environment variables, fallback to current origin, then try localhost ports
+const getApiBaseUrl = () => {
+  // If we have an environment variable, use that
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  
+  // In production, try to use the same origin
+  if (process.env.NODE_ENV === 'production') {
+    // If we're not in a browser, return a default localhost URL
+    if (typeof window === 'undefined') {
+      return 'http://localhost:3001';
+    }
     
-    const newHabit: Habit = {
-      id: newId,
-      name: habit.name,
-      category: habit.category,
-      streak: 0,
-      completed: false,
-      ...(habit.icon ? { icon: habit.icon } : {})
+    // Check if we're on a different port than API (common in some deployments)
+    const currentPort = window.location.port;
+    if (currentPort === '8080' || currentPort === '5173') {
+      // Likely a dev server, API probably on 3001
+      return `${window.location.protocol}//${window.location.hostname}:3001`;
+    }
+    
+    // Same origin
+    return window.location.origin;
+  }
+  
+  // In development, try localhost:3001
+  return 'http://localhost:3001';
+};
+
+// API base URL
+const API_BASE_URL = getApiBaseUrl();
+
+export function useDataStorage<T>(key: string, initialValue: T) {
+  // State to store our value
+  const [storedValue, setStoredValue] = useState<T>(initialValue);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const { user } = useAuth();
+
+  // Load data from server on initial mount
+  useEffect(() => {
+    if (!user) return; // Don't fetch data if not authenticated
+    
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Try to get from localStorage first (faster)
+        const localData = localStorage.getItem(`${user.userId}_${key}`);
+        if (localData) {
+          setStoredValue(JSON.parse(localData));
+        }
+        
+        // Then fetch from server (might be more up-to-date)
+        const authToken = localStorage.getItem('authToken');
+        if (!authToken) return;
+        
+        console.log(`Fetching data from ${API_BASE_URL}/api/data/${key}`);
+        const response = await fetch(`${API_BASE_URL}/api/data/${key}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Server responded with ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          console.error('Non-JSON response:', text);
+          throw new Error('Server did not return valid JSON');
+        }
+        
+        const data = await response.json();
+        
+        if (data) {
+          setStoredValue(data);
+          // Update localStorage with server data
+          localStorage.setItem(`${user.userId}_${key}`, JSON.stringify(data));
+        } else if (!localData) {
+          // If no data on server and no local data, use initial value
+          setStoredValue(initialValue);
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError(err instanceof Error ? err : new Error(String(err)));
+        
+        // Fall back to localStorage if server fetch fails
+        const localData = localStorage.getItem(`${user.userId}_${key}`);
+        if (localData) {
+          setStoredValue(JSON.parse(localData));
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [key, initialValue, user]);
+
+  // Function to save data both to localStorage and server
+  const setValue = async (value: T | ((val: T) => T)) => {
+    if (!user) return; // Don't save data if not authenticated
+    
+    try {
+      // Allow value to be a function so we have same API as useState
+      const valueToStore =
+        value instanceof Function ? value(storedValue) : value;
+      
+      // Save state
+      setStoredValue(valueToStore);
+      
+      // Save to localStorage for immediate access
+      localStorage.setItem(`${user.userId}_${key}`, JSON.stringify(valueToStore));
+      
+      // Save to server in background
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) return;
+      
+      console.log(`Saving data to ${API_BASE_URL}/api/data/${key}`);
+      const response = await fetch(`${API_BASE_URL}/api/data/${key}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ value: valueToStore }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`Server responded with ${response.status}`);
+      }
+    } catch (err) {
+      console.error('Error saving data:', err);
+      setError(err instanceof Error ? err : new Error(String(err)));
+      toast.error("Failed to save data to server. Changes may not sync across browsers.");
+    }
+  };
+
+  // For data polling - periodically check for updates from the server
+  useEffect(() => {
+    if (!user) return; // Don't poll if not authenticated
+    
+    const pollInterval = 30000; // Poll every 30 seconds
+    
+    const pollForUpdates = async () => {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) return;
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/data/${key}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!response.ok) return;
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return;
+        
+        const data = await response.json();
+        
+        if (data) {
+          // Compare with current data to avoid unnecessary updates
+          const currentData = JSON.stringify(storedValue);
+          const newData = JSON.stringify(data);
+          
+          if (currentData !== newData) {
+            console.log(`Data updated from server for ${key}`);
+            setStoredValue(data);
+            localStorage.setItem(`${user.userId}_${key}`, newData);
+          }
+        }
+      } catch (error) {
+        console.error('Error polling data:', error);
+      }
     };
     
-    const updatedHabits = [...habits, newHabit];
-    setHabits(updatedHabits);
+    const intervalId = setInterval(pollForUpdates, pollInterval);
     
-    // Sync with calendar habits
-    syncNewHabitToCalendar(newHabit);
-    
-    return newId;
-  };
+    return () => clearInterval(intervalId);
+  }, [key, user, storedValue]);
 
-  const syncNewHabitToCalendar = (newHabit: Habit) => {
-    // Add the new habit to all existing calendar days
-    const updatedCalendarHabits = { ...calendarHabits };
-    
-    Object.keys(updatedCalendarHabits).forEach(date => {
-      updatedCalendarHabits[date] = [
-        ...updatedCalendarHabits[date],
-        { id: newHabit.id, name: newHabit.name, completed: false }
-      ];
-    });
-    
-    setCalendarHabits(updatedCalendarHabits);
-  };
-
-  const toggleHabit = (id: number) => {
-    // Update the main habits state
-    const habit = habits.find(h => h.id === id);
-    if (!habit) return;
-
-    setHabits(habits.map(habit => 
-      habit.id === id 
-        ? { 
-            ...habit, 
-            completed: !habit.completed,
-            streak: !habit.completed ? habit.streak + 1 : Math.max(habit.streak - 1, 0)
-          } 
-        : habit
-    ));
-    
-    // Also update the daily habit status for today
-    const today = new Date();
-    const dateKey = format(today, "yyyy-MM-dd");
-    
-    // Create a new object to avoid direct state mutation
-    const newDailyHabitStatus = { ...dailyHabitStatus };
-    
-    // Initialize the date entry if it doesn't exist
-    if (!newDailyHabitStatus[dateKey]) {
-      newDailyHabitStatus[dateKey] = {};
-    }
-    
-    // Set the new completion status (opposite of current)
-    newDailyHabitStatus[dateKey][id] = !habit.completed;
-    
-    // Update state
-    setDailyHabitStatus(newDailyHabitStatus);
-    
-    // Also update calendar-habits if it exists
-    syncHabitToggleToCalendar(id, !habit.completed, dateKey);
-  };
-
-  const syncHabitToggleToCalendar = (id: number, completed: boolean, dateKey: string) => {
-    const updatedCalendarHabits = { ...calendarHabits };
-    
-    if (updatedCalendarHabits[dateKey]) {
-      const habitIndex = updatedCalendarHabits[dateKey].findIndex(h => h.id === id);
-      
-      if (habitIndex !== -1) {
-        // Update existing habit
-        updatedCalendarHabits[dateKey][habitIndex].completed = completed;
-      } else {
-        // Add habit if it doesn't exist
-        const habit = habits.find(h => h.id === id);
-        if (habit) {
-          updatedCalendarHabits[dateKey].push({
-            id: habit.id,
-            name: habit.name,
-            completed: completed
-          });
-        }
-      }
-      
-      setCalendarHabits(updatedCalendarHabits);
-    }
-  };
-
-  const removeHabit = (id: number) => {
-    setHabits(habits.filter(habit => habit.id !== id));
-    
-    // Remove habit from daily status
-    const newDailyHabitStatus = { ...dailyHabitStatus };
-    Object.keys(newDailyHabitStatus).forEach(date => {
-      if (newDailyHabitStatus[date][id]) {
-        delete newDailyHabitStatus[date][id];
-      }
-    });
-    setDailyHabitStatus(newDailyHabitStatus);
-    
-    // Remove from calendar-habits
-    syncHabitRemovalToCalendar(id);
-  };
-
-  const syncHabitRemovalToCalendar = (id: number) => {
-    const updatedCalendarHabits = { ...calendarHabits };
-    
-    Object.keys(updatedCalendarHabits).forEach(date => {
-      updatedCalendarHabits[date] = updatedCalendarHabits[date].filter(h => h.id !== id);
-    });
-    
-    setCalendarHabits(updatedCalendarHabits);
-  };
-
-  const updateHabit = (id: number, updates: Partial<Omit<Habit, "id">>) => {
-    const updatedHabits = habits.map(habit => 
-      habit.id === id 
-        ? { ...habit, ...updates } 
-        : habit
-    );
-    
-    setHabits(updatedHabits);
-    
-    // Sync to calendar habits
-    if (updates.name) {
-      syncHabitUpdateToCalendar(id, updates);
-    }
-  };
-
-  const syncHabitUpdateToCalendar = (id: number, updates: Partial<Omit<Habit, "id">>) => {
-    const updatedCalendarHabits = { ...calendarHabits };
-    
-    Object.keys(updatedCalendarHabits).forEach(date => {
-      updatedCalendarHabits[date] = updatedCalendarHabits[date].map(h => 
-        h.id === id 
-          ? { ...h, name: updates.name || h.name } 
-          : h
-      );
-    });
-    
-    setCalendarHabits(updatedCalendarHabits);
-  };
-
-  return {
-    habits,
-    addHabit,
-    toggleHabit,
-    removeHabit,
-    updateHabit
-  };
+  return { 
+    data: storedValue, 
+    setData: setValue, 
+    isLoading, 
+    error, 
+    // For backward compatibility with useLocalStorage
+    0: storedValue, 
+    1: setValue 
+  } as const;
 }
