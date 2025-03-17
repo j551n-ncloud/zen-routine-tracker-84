@@ -1,21 +1,21 @@
+
 FROM node:18-alpine
 
 # Create app directory
 WORKDIR /app
 
-# Install git (needed for cloning) and other dependencies
-RUN apk add --no-cache git
+# Install dependencies
+COPY package*.json ./
+RUN npm install
 
 # Copy project files into the container
 COPY . .
 
-# Install dependencies
-RUN npm install
+# Build the application
+RUN npm run build
 
-# Expose the Vite development server port
-# Vite uses 5173 by default instead of 3000
+# Expose the frontend port
 EXPOSE 8080
 
-# Start the development server
-# Adding host flag to make the server accessible outside the container
+# Start the development server with host flag to make it accessible
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

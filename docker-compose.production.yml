@@ -1,0 +1,27 @@
+
+version: '3'
+
+services:
+  # Frontend - production build with nginx
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  # Backend Express server
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+      - CLIENT_URL=http://localhost
