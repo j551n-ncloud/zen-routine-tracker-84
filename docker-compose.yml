@@ -16,6 +16,8 @@ services:
     volumes:
       - ./:/app
       - /app/node_modules
+    networks:
+      - app-network
 
   # Backend Express server
   backend:
@@ -30,3 +32,9 @@ services:
       - PORT=3001
       - CLIENT_URL=http://localhost:8080
       - NODE_ENV=production
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

@@ -11,6 +11,8 @@ services:
       - "80:80"
     depends_on:
       - backend
+    networks:
+      - app-network
 
   # Backend Express server
   backend:
@@ -25,3 +27,9 @@ services:
       - PORT=3001
       - NODE_ENV=production
       - CLIENT_URL=http://localhost
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
