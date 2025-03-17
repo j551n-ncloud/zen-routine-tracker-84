@@ -1,129 +1,192 @@
-import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ModeToggle } from "@/components/theme/mode-toggle";
-import { useAuth } from "@/hooks/use-auth";
-import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  Home,
-  CheckCircle,
-  ListTodo,
-  Calendar,
-  BarChart2,
-  Award,
-  Clock,
-  Settings,
-  Menu,
-  LogOut,
-  X
-} from "lucide-react";
-import SyncButton from "@/components/shared/SyncButton";
+import { toast } from "sonner";
 
-const navItems = [
-  { path: "/", label: "Dashboard", icon: <Home size={18} /> },
-  { path: "/habits", label: "Habits", icon: <CheckCircle size={18} /> },
-  { path: "/tasks", label: "Tasks", icon: <ListTodo size={18} /> },
-  { path: "/calendar", label: "Calendar", icon: <Calendar size={18} /> },
-  { path: "/daily-routine", label: "Daily Routine", icon: <Clock size={18} /> },
-  { path: "/insights", label: "Insights", icon: <BarChart2 size={18} /> },
-  { path: "/achievements", label: "Achievements", icon: <Award size={18} /> },
-  { path: "/settings", label: "Settings", icon: <Settings size={18} /> },
-];
-
-interface AppLayoutProps {
-  children: React.ReactNode;
-}
-
-const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
-  const location = useLocation();
-  const { logout } = useAuth();
-  const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    if (isMobile) {
-      setSidebarOpen(false);
+// Calculate the API base URL - prefer environment variables, fallback to current origin, then try localhost ports
+const getApiBaseUrl = () => {
+  // If we have an environment variable, use that
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  
+  // In production, try to use the same origin
+  if (process.env.NODE_ENV === 'production') {
+    // If we're not in a browser, return a default localhost URL
+    if (typeof window === 'undefined') {
+      return 'http://localhost:3001';
     }
-  };
-
-  return (
-    <div className="flex min-h-screen bg-background relative">
-      {/* Mobile sidebar toggle */}
-      {isMobile && (
-        <Button
-          variant="outline"
-          size="icon"
-          className="fixed top-4 left-4 z-50"
-          onClick={toggleSidebar}
-        >
-          {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
-        </Button>
-      )}
-
-      {/* Sidebar */}
-      <div
-        className={`bg-sidebar fixed top-0 left-0 z-40 h-full w-64 border-r border-sidebar-border transition-transform duration-300 ${
-          isMobile
-            ? sidebarOpen
-              ? "translate-x-0"
-              : "-translate-x-full"
-            : "translate-x-0"
-        }`}
-      >
-        <div className="flex flex-col h-full">
-          <div className="p-4 border-b border-sidebar-border">
-            <h1 className="text-xl font-bold text-sidebar-foreground">Zen Routine Tracker</h1>
-          </div>
-
-          <nav className="flex-1 py-6">
-            <ul className="space-y-1 px-2">
-              {navItems.map((item) => (
-                <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    className={`flex items-center py-2 px-3 rounded-md transition-colors ${
-                      location.pathname === item.path
-                        ? "bg-sidebar-accent text-sidebar-primary"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent/50"
-                    }`}
-                    onClick={closeSidebar}
-                  >
-                    {item.icon}
-                    <span className="ml-3">{item.label}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          <div className="p-4 border-t border-sidebar-border flex justify-between items-center">
-            <div className="flex space-x-2">
-              <ModeToggle />
-              <SyncButton size="icon" variant="outline" showText={false} />
-            </div>
-            <Button variant="ghost" size="icon" onClick={logout}>
-              <LogOut size={18} />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div
-        className={`flex-1 transition-all duration-300 ${
-          isMobile ? "ml-0" : "ml-64"
-        }`}
-      >
-        <main className="container py-6 px-4 sm:px-6 lg:px-8">
-          {children}
-        </main>
-      </div>
-    </div>
-  );
+    
+    // Check if we're on a different port than API (common in some deployments)
+    const currentPort = window.location.port;
+    if (currentPort === '8080' || currentPort === '5173') {
+      // Likely a dev server, API probably on 3001
+      return `${window.location.protocol}//${window.location.hostname}:3001`;
+    }
+    
+    // Same origin
+    return window.location.origin;
+  }
+  
+  // In development, try localhost:3001
+  return 'http://localhost:3001';
 };
 
-export default AppLayout;
+// API base URL
+const API_BASE_URL = getApiBaseUrl();
+
+class SyncService {
+  syncInterval: number | null = null;
+  lastSyncTime: Record<string, string> = {};
+  keysToSync: Set<string> = new Set();
+  syncing: boolean = false;
+  
+  // Initialize the sync service
+  init() {
+    if (this.syncInterval) {
+      // Already initialized
+      return;
+    }
+    
+    // Start the sync interval
+    this.syncInterval = window.setInterval(() => {
+      this.performSync();
+    }, 30000); // Sync every 30 seconds
+    
+    // Register unload event to sync before page is closed
+    window.addEventListener('beforeunload', () => {
+      this.performSync(true);
+    });
+    
+    console.log('SyncService initialized');
+  }
+  
+  // Stop the sync service
+  stop() {
+    if (this.syncInterval) {
+      window.clearInterval(this.syncInterval);
+      this.syncInterval = null;
+    }
+  }
+  
+  // Register a key to be synced
+  registerKey(key: string) {
+    this.keysToSync.add(key);
+  }
+  
+  // Remove a key from syncing
+  unregisterKey(key: string) {
+    this.keysToSync.delete(key);
+  }
+  
+  // Perform sync with the server
+  async performSync(immediate: boolean = false) {
+    // Don't sync if another sync is in progress
+    if (this.syncing) return;
+    
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) return;
+    
+    // No keys to sync
+    if (this.keysToSync.size === 0) return;
+    
+    this.syncing = true;
+    
+    try {
+      // First, check which keys need updating from the server
+      const keysArray = Array.from(this.keysToSync);
+      
+      // Fetch timestamps from server
+      const timestampResponse = await fetch(`${API_BASE_URL}/api/data/sync/timestamps`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ keys: keysArray })
+      });
+      
+      if (!timestampResponse.ok) {
+        throw new Error(`Server responded with ${timestampResponse.status}`);
+      }
+      
+      const timestamps = await timestampResponse.json();
+      const keysToDownload: string[] = [];
+      
+      // Determine which keys need updating
+      Object.entries(timestamps).forEach(([key, timestamp]) => {
+        if (timestamp && (!this.lastSyncTime[key] || this.lastSyncTime[key] < timestamp as string)) {
+          keysToDownload.push(key);
+        }
+      });
+      
+      // If there are keys to download, fetch them
+      if (keysToDownload.length > 0) {
+        const dataResponse = await fetch(`${API_BASE_URL}/api/data/sync/batch`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`,
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ keys: keysToDownload })
+        });
+        
+        if (!dataResponse.ok) {
+          throw new Error(`Server responded with ${dataResponse.status}`);
+        }
+        
+        const batchData = await dataResponse.json();
+        
+        // Update local storage with the downloaded data
+        Object.entries(batchData).forEach(([key, value]) => {
+          if (value !== null) {
+            try {
+              // Extract user ID (simple implementation - in production use proper JWT parsing)
+              let userId = 'user';
+              try {
+                // Try to get user ID from token if it's a JWT
+                if (authToken.includes('.')) {
+                  const payload = JSON.parse(atob(authToken.split('.')[1]));
+                  userId = payload.sub || payload.userId || 'user';
+                }
+              } catch (e) {
+                console.error('Error parsing auth token:', e);
+              }
+              
+              // Update localStorage with server data
+              localStorage.setItem(`${userId}_${key}`, JSON.stringify(value));
+              
+              // Update last sync time
+              if (timestamps[key]) {
+                this.lastSyncTime[key] = timestamps[key] as string;
+              }
+              
+              // Inform about sync (only for immediate syncs)
+              if (immediate && keysToDownload.length > 0) {
+                toast.info(`Synchronized data from server (${keysToDownload.length} items)`);
+              }
+            } catch (error) {
+              console.error(`Error updating local data for ${key}:`, error);
+            }
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      if (immediate) {
+        toast.error('Failed to synchronize with server');
+      }
+    } finally {
+      this.syncing = false;
+    }
+  }
+  
+  // Trigger an immediate sync
+  async syncNow() {
+    return this.performSync(true);
+  }
+}
+
+// Create singleton instance
+const syncService = new SyncService();
+
+export default syncService;

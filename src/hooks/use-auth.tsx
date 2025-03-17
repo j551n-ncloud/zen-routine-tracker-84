@@ -1,5 +1,37 @@
-import { useAuth } from "@/hooks/use-auth";
-import { toast } from "sonner";
+import { useState, useEffect, createContext, useContext } from 'react';
+import { toast } from 'sonner';
+import syncService from '@/services/sync-service';
+
+// Types
+interface User {
+  userId: string;
+  username: string;
+  role: string;
+}
+
+interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+interface RegisterCredentials {
+  username: string;
+  password: string;
+  email?: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  login: (credentials: LoginCredentials) => Promise<boolean>;
+  register: (credentials: RegisterCredentials) => Promise<boolean>;
+  logout: () => void;
+  isLoading: boolean;
+  error: string | null;
+  syncData: () => Promise<void>;
+}
+
+// Create auth context
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Calculate the API base URL - prefer environment variables, fallback to current origin, then try localhost ports
 const getApiBaseUrl = () => {
@@ -33,177 +65,266 @@ const getApiBaseUrl = () => {
 // API base URL
 const API_BASE_URL = getApiBaseUrl();
 
-class SyncService {
-  syncInterval: number | null = null;
-  lastSyncTime: Record<string, string> = {};
-  keysToSync: Set<string> = new Set();
-  syncing: boolean = false;
-  
-  // Initialize the sync service
-  init() {
-    if (this.syncInterval) {
-      // Already initialized
-      return;
-    }
+// Provider component
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        console.log(`Checking auth at ${API_BASE_URL}/api/auth/user`);
+        const response = await fetch(`${API_BASE_URL}/api/auth/user`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          console.error('Non-JSON response:', text);
+          throw new Error('Server did not return JSON');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          setUser(data.user);
+          
+          // Initialize sync service after successful login
+          syncService.init();
+          
+          // Register default keys for syncing
+          const keysToSync = [
+            'zen-tracker-habits',
+            'zen-tracker-daily-habits',
+            'zen-tracker-tasks',
+            'zen-tracker-upcoming-tasks',
+            'calendar-habits',
+            'calendar-tasks',
+            'energy-levels',
+            'breaks',
+            'calendar-daily-focus',
+            'calendar-daily-priorities',
+            'daily-routine-tasks',
+            'routine-templates'
+          ];
+          
+          keysToSync.forEach(key => syncService.registerKey(key));
+        } else {
+          // Clear invalid token
+          localStorage.removeItem('authToken');
+        }
+      } catch (err) {
+        console.error('Auth check error:', err);
+        setError('Error checking authentication status');
+        // Clear potentially invalid token
+        localStorage.removeItem('authToken');
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    // Start the sync interval
-    this.syncInterval = window.setInterval(() => {
-      this.performSync();
-    }, 30000); // Sync every 30 seconds
+    checkAuth();
     
-    // Register unload event to sync before page is closed
-    window.addEventListener('beforeunload', () => {
-      this.performSync(true);
-    });
-    
-    console.log('SyncService initialized');
-  }
-  
-  // Stop the sync service
-  stop() {
-    if (this.syncInterval) {
-      window.clearInterval(this.syncInterval);
-      this.syncInterval = null;
-    }
-  }
-  
-  // Register a key to be synced
-  registerKey(key: string) {
-    this.keysToSync.add(key);
-  }
-  
-  // Remove a key from syncing
-  unregisterKey(key: string) {
-    this.keysToSync.delete(key);
-  }
-  
-  // Perform sync with the server
-  async performSync(immediate: boolean = false) {
-    // Don't sync if another sync is in progress
-    if (this.syncing) return;
-    
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) return;
-    
-    // No keys to sync
-    if (this.keysToSync.size === 0) return;
-    
-    this.syncing = true;
+    // Cleanup function
+    return () => {
+      // Stop sync service when component unmounts
+      syncService.stop();
+    };
+  }, []);
+
+  // Login function
+  const login = async (credentials: LoginCredentials): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
     
     try {
-      // First, check which keys need updating from the server
-      const keysArray = Array.from(this.keysToSync);
-      
-      // Fetch timestamps from server
-      const timestampResponse = await fetch(`${API_BASE_URL}/api/data/sync/timestamps`, {
+      console.log(`Logging in at ${API_BASE_URL}/api/auth/login`);
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
           'Accept': 'application/json'
         },
-        body: JSON.stringify({ keys: keysArray })
+        body: JSON.stringify(credentials)
       });
       
-      if (!timestampResponse.ok) {
-        throw new Error(`Server responded with ${timestampResponse.status}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`Server responded with status: ${response.status}`);
       }
       
-      const timestamps = await timestampResponse.json();
-      const keysToDownload: string[] = [];
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        console.error('Non-JSON response:', responseText);
+        throw new Error('Server did not return JSON');
+      }
       
-      // Determine which keys need updating
-      Object.entries(timestamps).forEach(([key, timestamp]) => {
-        if (timestamp && (!this.lastSyncTime[key] || this.lastSyncTime[key] < timestamp as string)) {
-          keysToDownload.push(key);
-        }
+      const data = await response.json();
+      
+      if (data.success) {
+        setUser(data.user);
+        localStorage.setItem('authToken', data.token);
+        toast.success('Login successful');
+        
+        // Initialize sync service after successful login
+        syncService.init();
+        
+        // Register default keys for syncing
+        const keysToSync = [
+          'zen-tracker-habits',
+          'zen-tracker-daily-habits',
+          'zen-tracker-tasks',
+          'zen-tracker-upcoming-tasks',
+          'calendar-habits',
+          'calendar-tasks',
+          'energy-levels',
+          'breaks',
+          'calendar-daily-focus',
+          'calendar-daily-priorities',
+          'daily-routine-tasks',
+          'routine-templates'
+        ];
+        
+        keysToSync.forEach(key => syncService.registerKey(key));
+        
+        // Perform initial sync
+        syncService.syncNow();
+        
+        return true;
+      } else {
+        setError(data.error || 'Login failed');
+        toast.error(data.error || 'Login failed');
+        return false;
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred during login';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Register function
+  const register = async (credentials: RegisterCredentials): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(credentials)
       });
       
-      // If there are keys to download, fetch them
-      if (keysToDownload.length > 0) {
-        const dataResponse = await fetch(`${API_BASE_URL}/api/data/sync/batch`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`,
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({ keys: keysToDownload })
-        });
-        
-        if (!dataResponse.ok) {
-          throw new Error(`Server responded with ${dataResponse.status}`);
-        }
-        
-        const batchData = await dataResponse.json();
-        
-        // Update local storage with the downloaded data
-        Object.entries(batchData).forEach(([key, value]) => {
-          if (value !== null) {
-            try {
-              // Extract user ID (simple implementation - in production use proper JWT parsing)
-              let userId = 'user';
-              try {
-                // Try to get user ID from token if it's a JWT
-                if (authToken.includes('.')) {
-                  const payload = JSON.parse(atob(authToken.split('.')[1]));
-                  userId = payload.sub || payload.userId || 'user';
-                }
-              } catch (e) {
-                console.error('Error parsing auth token:', e);
-              }
-              
-              // Update localStorage with server data
-              localStorage.setItem(`${userId}_${key}`, JSON.stringify(value));
-              
-              // Update last sync time
-              if (timestamps[key]) {
-                this.lastSyncTime[key] = timestamps[key] as string;
-              }
-              
-              // Inform about sync (only for immediate syncs)
-              if (immediate && keysToDownload.length > 0) {
-                toast.info(`Synchronized data from server (${keysToDownload.length} items)`);
-              }
-            } catch (error) {
-              console.error(`Error updating local data for ${key}:`, error);
-            }
-          }
-        });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`Server responded with status: ${response.status}`);
       }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setUser(data.user);
+        localStorage.setItem('authToken', data.token);
+        toast.success('Registration successful');
+        
+        // Initialize sync service after successful registration
+        syncService.init();
+        
+        return true;
+      } else {
+        setError(data.error || 'Registration failed');
+        toast.error(data.error || 'Registration failed');
+        return false;
+      }
+    } catch (err) {
+      console.error('Registration error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred during registration';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Logout function
+  const logout = () => {
+    // Stop sync service
+    syncService.stop();
+    
+    // Clear auth token
+    localStorage.removeItem('authToken');
+    setUser(null);
+    toast.info('Logged out successfully');
+  };
+
+  // Sync data function
+  const syncData = async () => {
+    if (!user) {
+      toast.error('You must be logged in to sync data');
+      return;
+    }
+    
+    try {
+      await syncService.syncNow();
+      toast.success('Data synchronized successfully');
     } catch (error) {
       console.error('Sync error:', error);
-      if (immediate) {
-        toast.error('Failed to synchronize with server');
-      }
-    } finally {
-      this.syncing = false;
+      toast.error('Failed to synchronize data');
     }
-  }
-  
-  // Trigger an immediate sync
-  async syncNow() {
-    return this.performSync(true);
-  }
-}
-
-// Create singleton instance
-const syncService = new SyncService();
-
-// Hook to use sync service in components
-export function useSyncService() {
-  const { user } = useAuth();
-  
-  // Start sync service when user is logged in
-  if (user && !syncService.syncInterval) {
-    syncService.init();
-  }
-  
-  return {
-    registerKey: (key: string) => syncService.registerKey(key),
-    unregisterKey: (key: string) => syncService.unregisterKey(key),
-    syncNow: () => syncService.syncNow()
   };
-}
 
-export default syncService;
+  const value = {
+    user,
+    login,
+    register,
+    logout,
+    isLoading,
+    error,
+    syncData
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// Hook to use auth context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  
+  return context;
+};
