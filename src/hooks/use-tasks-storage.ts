@@ -1,5 +1,4 @@
-
-import { useLocalStorage } from "./use-local-storage";
+import { useDataStorage } from "./use-data-storage";
 
 export interface Task {
   id: number;
@@ -90,11 +89,14 @@ const ensureDate = (dateInput: Date | string): Date => {
 };
 
 export function useTasksStorage() {
-  const [tasks, setTasks] = useLocalStorage<Task[]>("zen-tracker-tasks", initialTasks);
-  const [upcomingTasks, setUpcomingTasks] = useLocalStorage<Task[]>(
+  // Use useDataStorage instead of useLocalStorage for server syncing
+  const { data: tasks, setData: setTasks } = useDataStorage<Task[]>("zen-tracker-tasks", initialTasks);
+  const { data: upcomingTasks, setData: setUpcomingTasks } = useDataStorage<Task[]>(
     "zen-tracker-upcoming-tasks", 
     initialUpcomingTasks
   );
+  // For calendar tasks
+  const { data: calendarTasks, setData: setCalendarTasks } = useDataStorage<Record<string, any[]>>("calendar-tasks", {});
 
   const addTask = (task: Omit<Task, "id">) => {
     const allTasks = [...tasks, ...upcomingTasks];
@@ -128,24 +130,21 @@ export function useTasksStorage() {
     try {
       const formattedDate = formatDate(taskDate);
       
-      const calendarTasksData = localStorage.getItem("calendar-tasks");
-      if (calendarTasksData) {
-        const savedTasks = JSON.parse(calendarTasksData);
-        
-        const simplifiedTask = {
-          id: newId,
-          title: task.title,
-          completed: false
-        };
-        
-        if (savedTasks[formattedDate]) {
-          savedTasks[formattedDate] = [...savedTasks[formattedDate], simplifiedTask];
-        } else {
-          savedTasks[formattedDate] = [simplifiedTask];
-        }
-        
-        localStorage.setItem("calendar-tasks", JSON.stringify(savedTasks));
+      const calendarTasksObj = { ...calendarTasks };
+      
+      const simplifiedTask = {
+        id: newId,
+        title: task.title,
+        completed: false
+      };
+      
+      if (calendarTasksObj[formattedDate]) {
+        calendarTasksObj[formattedDate] = [...calendarTasksObj[formattedDate], simplifiedTask];
+      } else {
+        calendarTasksObj[formattedDate] = [simplifiedTask];
       }
+      
+      setCalendarTasks(calendarTasksObj);
     } catch (error) {
       console.error("Error updating calendar tasks:", error);
     }
@@ -190,17 +189,14 @@ export function useTasksStorage() {
       const taskDate = ensureDate(task.dueDate);
       const formattedDate = formatDate(taskDate);
       
-      const calendarTasksData = localStorage.getItem("calendar-tasks");
-      if (calendarTasksData) {
-        const savedTasks = JSON.parse(calendarTasksData);
+      const calendarTasksObj = { ...calendarTasks };
+      
+      if (calendarTasksObj[formattedDate]) {
+        calendarTasksObj[formattedDate] = calendarTasksObj[formattedDate].map((t: any) =>
+          t.id === task.id ? { ...t, completed: task.completed } : t
+        );
         
-        if (savedTasks[formattedDate]) {
-          savedTasks[formattedDate] = savedTasks[formattedDate].map((t: any) =>
-            t.id === task.id ? { ...t, completed: task.completed } : t
-          );
-          
-          localStorage.setItem("calendar-tasks", JSON.stringify(savedTasks));
-        }
+        setCalendarTasks(calendarTasksObj);
       }
     } catch (error) {
       console.error("Error updating task in calendar:", error);
@@ -218,18 +214,19 @@ export function useTasksStorage() {
     
     // Also remove from calendar tasks if present
     try {
-      const calendarTasksData = localStorage.getItem("calendar-tasks");
-      if (calendarTasksData) {
-        const savedTasks = JSON.parse(calendarTasksData);
-        
-        // Look through all dates
-        for (const date in savedTasks) {
-          if (savedTasks[date].some((t: any) => t.id === id)) {
-            savedTasks[date] = savedTasks[date].filter((t: any) => t.id !== id);
-            localStorage.setItem("calendar-tasks", JSON.stringify(savedTasks));
-            break;
-          }
+      const calendarTasksObj = { ...calendarTasks };
+      let updated = false;
+      
+      // Look through all dates
+      for (const date in calendarTasksObj) {
+        if (calendarTasksObj[date].some((t: any) => t.id === id)) {
+          calendarTasksObj[date] = calendarTasksObj[date].filter((t: any) => t.id !== id);
+          updated = true;
         }
+      }
+      
+      if (updated) {
+        setCalendarTasks(calendarTasksObj);
       }
     } catch (error) {
       console.error("Error removing task from calendar:", error);
