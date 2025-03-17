@@ -53,6 +53,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         });
         
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Server did not return JSON');
+        }
+        
         const data = await response.json();
         
         if (data.success) {
@@ -64,6 +73,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (err) {
         console.error('Auth check error:', err);
         setError('Error checking authentication status');
+        // Clear potentially invalid token
+        localStorage.removeItem('authToken');
       } finally {
         setIsLoading(false);
       }
@@ -86,6 +97,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         body: JSON.stringify(credentials)
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        console.error('Non-JSON response:', responseText);
+        throw new Error('Server did not return JSON');
+      }
+      
       const data = await response.json();
       
       if (data.success) {
@@ -100,7 +124,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     } catch (err) {
       console.error('Login error:', err);
-      const errorMessage = 'An error occurred during login';
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred during login';
       setError(errorMessage);
       toast.error(errorMessage);
       return false;
